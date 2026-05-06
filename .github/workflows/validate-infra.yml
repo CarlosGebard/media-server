@@ -74,7 +74,13 @@ jobs:
         run: ./tests/ansible/check.sh
 
       - name: Validate Docker Compose
-        run: docker compose --env-file compose/env/media.env.example -f compose/projects/media/compose.yml -f compose/projects/media/compose.prod.yml config >/dev/null
+        run: |
+          set -euo pipefail
+          cp compose/env/media.env.example compose/projects/media/.env
+          docker compose --env-file compose/projects/media/.env \
+            -f compose/projects/media/compose.yml \
+            -f compose/projects/media/compose.prod.yml \
+            config >/dev/null
 
       - name: Assert Infisical secret contract
         env:
