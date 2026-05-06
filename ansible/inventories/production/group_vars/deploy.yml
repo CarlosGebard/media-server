@@ -25,6 +25,7 @@ deploy:
     directories:
       - { path: "{{ srv_apps_root }}/media/couchdb/local.d", mode: "0755" }
       - { path: "{{ srv_apps_root }}/media/nginx/conf.d", mode: "0755" }
+      - { path: "{{ srv_apps_root }}/media/nginx/acme", mode: "0755" }
       - { path: "{{ srv_data_root }}/media/immich/library", mode: "0750" }
       - { path: "{{ srv_data_root }}/media/immich/postgres", mode: "0750" }
       - { path: "{{ srv_data_root }}/media/couchdb/data", owner: "5984", group: "5984", mode: "0750" }
@@ -48,9 +49,5 @@ deploy:
           - couchdb
       - src: "{{ playbook_dir }}/../../compose/configs/nginx/nginx.conf"
         dest: "{{ srv_apps_root }}/media/nginx/nginx.conf"
-        restart_services:
-          - nginx
-      - src: "{{ playbook_dir }}/../../compose/configs/nginx/conf.d/media.conf"
-        dest: "{{ srv_apps_root }}/media/nginx/conf.d/media.conf"
         restart_services:
           - nginx

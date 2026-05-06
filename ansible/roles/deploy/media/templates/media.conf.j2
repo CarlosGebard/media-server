@@ -1,0 +1,95 @@
+server {
+  listen 80 default_server;
+  server_name {{ immich_domain }};
+
+  resolver 127.0.0.11 valid=10s ipv6=off;
+  resolver_timeout 5s;
+
+  location = /healthz {
+    access_log off;
+    default_type text/plain;
+    return 200 "ok\n";
+  }
+
+  location ^~ /.well-known/acme-challenge/ {
+    root /var/www/certbot;
+    try_files $uri =404;
+  }
+
+{% if media_tls_enabled | bool %}
+  location / {
+    return 301 https://$host$request_uri;
+  }
+{% else %}
+  location / {
+    set $upstream immich-server:2283;
+    proxy_pass http://$upstream;
+  }
+{% endif %}
+}
+
+server {
+  listen 80;
+  server_name {{ couchdb_domain }};
+
+  resolver 127.0.0.11 valid=10s ipv6=off;
+  resolver_timeout 5s;
+
+  location ^~ /.well-known/acme-challenge/ {
+    root /var/www/certbot;
+    try_files $uri =404;
+  }
+
+{% if media_tls_enabled | bool %}
+  location / {
+    return 301 https://$host$request_uri;
+  }
+{% else %}
+  location / {
+    set $upstream couchdb:5984;
+    proxy_pass http://$upstream;
+  }
+{% endif %}
+}
+
+{% if media_tls_enabled | bool %}
+server {
+  listen 443 ssl;
+  server_name {{ immich_domain }};
+
+  resolver 127.0.0.11 valid=10s ipv6=off;
+  resolver_timeout 5s;
+
+  ssl_certificate /etc/letsencrypt/live/{{ media_cert_name }}/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/{{ media_cert_name }}/privkey.pem;
+  ssl_session_cache shared:SSL:10m;
+  ssl_session_timeout 10m;
+  ssl_protocols TLSv1.2 TLSv1.3;
+  ssl_prefer_server_ciphers off;
+
+  location / {
+    set $upstream immich-server:2283;
+    proxy_pass http://$upstream;
+  }
+}
+
+server {
+  listen 443 ssl;
+  server_name {{ couchdb_domain }};
+
+  resolver 127.0.0.11 valid=10s ipv6=off;
+  resolver_timeout 5s;
+
+  ssl_certificate /etc/letsencrypt/live/{{ media_cert_name }}/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/{{ media_cert_name }}/privkey.pem;
+  ssl_session_cache shared:SSL:10m;
+  ssl_session_timeout 10m;
+  ssl_protocols TLSv1.2 TLSv1.3;
+  ssl_prefer_server_ciphers off;
+
+  location / {
+    set $upstream couchdb:5984;
+    proxy_pass http://$upstream;
+  }
+}
+{% endif %}

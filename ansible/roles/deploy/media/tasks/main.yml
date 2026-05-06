@@ -1,10 +1,44 @@
 ---
 - name: Derive media compose CLI args
   ansible.builtin.set_fact:
+    media_base_domain: "{{ lookup('ansible.builtin.env', 'BASE_DOMAIN') | default('carlosjg.space', true) }}"
+    media_certbot_email: >-
+      {{
+        lookup('ansible.builtin.env', 'CERTBOT_EMAIL')
+        | default('admin@' ~ (lookup('ansible.builtin.env', 'BASE_DOMAIN') | default('carlosjg.space', true)), true)
+      }}
+    media_public_domains:
+      - "immich.{{ lookup('ansible.builtin.env', 'BASE_DOMAIN') | default('carlosjg.space', true) }}"
+      - "couchdb.{{ lookup('ansible.builtin.env', 'BASE_DOMAIN') | default('carlosjg.space', true) }}"
+    media_cert_name: "media-edge-{{ (lookup('ansible.builtin.env', 'BASE_DOMAIN') | default('carlosjg.space', true)) | replace('.', '-') }}"
     deploy_media_compose_args: >-
       {{
         '-f ' ~ (deploy_stack.compose_cli_files | join(' -f '))
       }}
+
+- name: Install certbot packages for media TLS
+  ansible.builtin.apt:
+    name:
+      - certbot
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Allow media edge ports through UFW
+  ansible.builtin.command: "ufw allow {{ item }}/tcp"
+  loop:
+    - 80
+    - 443
+  register: deploy_media_ufw_allow_rule
+  changed_when: >-
+    'Rule added' in deploy_media_ufw_allow_rule.stdout or
+    'Rules updated' in deploy_media_ufw_allow_rule.stdout
+  failed_when: false
+
+- name: Check whether media TLS certificate already exists
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ media_cert_name }}/fullchain.pem"
+  register: media_tls_cert
 
 - name: Ensure media deploy directories exist
   ansible.builtin.file:
@@ -48,6 +82,20 @@
     mode: "{{ item.mode | default('0644') }}"
   loop: "{{ deploy_stack.config_files | default([]) }}"
   register: deploy_media_config_copy
+
+- name: Render media nginx routing
+  ansible.builtin.template:
+    src: media.conf.j2
+    dest: "{{ deploy_stack.project_dir }}/nginx/conf.d/media.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    immich_domain: "{{ media_public_domains[0] }}"
+    couchdb_domain: "{{ media_public_domains[1] }}"
+    media_cert_name: "{{ media_cert_name }}"
+    media_tls_enabled: "{{ media_tls_cert.stat.exists }}"
+  register: deploy_media_nginx_template_pre_tls
 
 - name: Copy media stack compose files
   ansible.builtin.copy:
@@ -128,6 +176,56 @@
     'Started' in deploy_media_up.stdout or
     'Recreated' in deploy_media_up.stdout or
     'Creating' in deploy_media_up.stdout
+
+- name: Obtain or renew media TLS certificate
+  ansible.builtin.command:
+    cmd: >-
+      certbot certonly --non-interactive --agree-tos
+      --email {{ media_certbot_email }}
+      --cert-name {{ media_cert_name }}
+      {% if media_tls_cert.stat.exists %}--expand{% else %}--duplicate{% endif %}
+      --webroot -w {{ deploy_stack.project_dir }}/nginx/acme
+      {% for domain in media_public_domains %}-d {{ domain }} {% endfor %}
+      --keep-until-expiring
+  register: media_certbot_result
+  changed_when: >-
+    'Successfully received certificate' in media_certbot_result.stdout or
+    'Congratulations' in media_certbot_result.stdout or
+    'Certificate not yet due for renewal' not in media_certbot_result.stdout
+
+- name: Re-check media TLS certificate
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ media_cert_name }}/fullchain.pem"
+  register: media_tls_cert_after
+
+- name: Ensure media TLS certificate exists
+  ansible.builtin.assert:
+    that:
+      - media_tls_cert_after.stat.exists
+    fail_msg: "Media TLS certificate was not created by certbot."
+
+- name: Render media nginx routing with TLS enabled
+  ansible.builtin.template:
+    src: media.conf.j2
+    dest: "{{ deploy_stack.project_dir }}/nginx/conf.d/media.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    immich_domain: "{{ media_public_domains[0] }}"
+    couchdb_domain: "{{ media_public_domains[1] }}"
+    media_cert_name: "{{ media_cert_name }}"
+    media_tls_enabled: true
+  register: deploy_media_nginx_template_tls
+
+- name: Redeploy media stack with TLS enabled
+  ansible.builtin.command:
+    cmd: docker compose --env-file {{ deploy_stack.env_path }} {{ deploy_media_compose_args }} up -d
+  register: deploy_media_tls_up
+  changed_when: >-
+    'Started' in deploy_media_tls_up.stdout or
+    'Recreated' in deploy_media_tls_up.stdout or
+    'Creating' in deploy_media_tls_up.stdout
 
 - name: Force recreate media services with runtime definition changes
   ansible.builtin.command:
