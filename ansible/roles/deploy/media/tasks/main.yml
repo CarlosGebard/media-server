@@ -40,6 +40,14 @@
     path: "/etc/letsencrypt/live/{{ media_cert_name }}/fullchain.pem"
   register: media_tls_cert
 
+- name: Ensure shared Docker networks exist
+  ansible.builtin.command:
+    cmd: docker network create {{ item }}
+  register: deploy_media_network_create
+  changed_when: deploy_media_network_create.rc == 0
+  failed_when: deploy_media_network_create.rc != 0 and 'already exists' not in deploy_media_network_create.stderr
+  loop: "{{ shared_docker_networks | default([]) }}"
+
 - name: Ensure media deploy directories exist
   ansible.builtin.file:
     path: "{{ item.path }}"
