@@ -3,7 +3,7 @@ services:
     ports:
       - "${IMMICH_BIND_IP:-127.0.0.1}:${IMMICH_HTTP_PORT:-2283}:2283"
     volumes:
-      - ${UPLOAD_LOCATION:-/srv/data/media/immich/library}:/data
+      - ${UPLOAD_LOCATION:-/srv/data/media/immich/app}:/data
       - /etc/localtime:/etc/localtime:ro
 
   database:

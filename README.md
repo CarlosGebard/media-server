@@ -43,10 +43,10 @@ ansible-playbook -i ansible/inventories/production/hosts.yml ansible/playbooks/d
 
 Production edge:
 
-- Immich is exposed by NGINX on `NGINX_HTTP_PORT`, default `80`.
-- CouchDB is exposed by NGINX on `NGINX_COUCHDB_PORT`, default `5984`.
+- Immich is exposed at `https://immich.carlosjg.space`.
+- CouchDB is exposed at `https://couchdb.carlosjg.space`.
+- HTTP on `80/tcp` is kept for ACME challenge and redirect.
 - Tailscale is not part of this stack.
-- Add DNS/TLS outside this first plan or as a later explicit milestone.
 
 ## Notes
 
@@ -56,3 +56,15 @@ Production edge:
 - Keep Immich upgrades deliberate; check upstream release notes before changing `IMMICH_VERSION`.
 - Keep CouchDB credentials strong because service is exposed.
 - CouchDB migration from old infra is documented in `docs/runbooks/media-deploy.md`.
+
+## Storage
+
+Production layout:
+
+```text
+/srv/data/media/immich/app       # Immich /data root
+/srv/data/media/immich/postgres  # Immich Postgres
+/srv/data/media/couchdb/data     # CouchDB
+```
+
+Immich creates `library`, `upload`, `thumbs`, `profile`, `encoded-video`, and `backups` under `/srv/data/media/immich/app`.

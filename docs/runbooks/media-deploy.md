@@ -5,7 +5,7 @@
 Create local data dirs:
 
 ```bash
-mkdir -p compose/.tmp/media/immich/library
+mkdir -p compose/.tmp/media/immich/app
 mkdir -p compose/.tmp/media/immich/postgres
 mkdir -p compose/.tmp/media/couchdb/data
 ```
@@ -61,18 +61,39 @@ Rules:
 - Keep `DB_PASSWORD` alphanumeric unless Docker interpolation has been tested.
 - Set `NGINX_BIND_IP=0.0.0.0` only when firewall, DNS, and TLS posture are understood.
 - Set `NGINX_HTTP_PORT=80` for Immich edge.
-- Set `NGINX_COUCHDB_PORT=5984` for CouchDB edge.
+- Set `NGINX_HTTPS_PORT=443` for HTTPS edge.
 - Do not commit production values.
 
 ## Production Permissions
 
-Ansible owns CouchDB data as UID/GID `5984:5984`:
+Ansible owns bind-mounted service data with container UIDs:
 
 ```bash
+/srv/data/media/immich/postgres
 /srv/data/media/couchdb/data
 ```
 
-This is required because the CouchDB container runs as `5984:5984` and must create `_nodes.couch`, `_dbs.couch`, and user databases there.
+Required ownership:
+
+- Immich Postgres data: `999:999`
+- CouchDB data: `5984:5984`
+
+This is required because both containers run as non-root users and must create/read database files inside bind-mounted host directories.
+
+Immich app storage is mounted as `/data`:
+
+```bash
+/srv/data/media/immich/app
+```
+
+Immich creates these folders below that root:
+
+- `backups`
+- `encoded-video`
+- `library`
+- `profile`
+- `thumbs`
+- `upload`
 
 ## Production Deploy
 
@@ -91,13 +112,13 @@ cd /srv/apps/media
 docker compose --env-file /srv/secrets/runtime/media.env \
   -f compose.yml -f compose.prod.yml ps
 curl -fsS http://127.0.0.1/healthz
-curl -fsS "http://USER:PASS@127.0.0.1:5984/_up"
+curl -fsS "https://USER:PASS@couchdb.carlosjg.space/_up"
 ```
 
 Expected public ports:
 
-- `80/tcp` -> Immich through NGINX.
-- `5984/tcp` -> CouchDB through NGINX.
+- `80/tcp` -> ACME challenge and HTTP-to-HTTPS redirect.
+- `443/tcp` -> Immich and CouchDB through NGINX.
 
 No Tailscale dependency exists for this stack.
 
@@ -111,7 +132,7 @@ No Tailscale dependency exists for this stack.
 6. Verify through NGINX:
 
 ```bash
-curl -fsS "http://USER:PASS@127.0.0.1:${NGINX_COUCHDB_PORT:-5984}/_up"
+curl -fsS "https://USER:PASS@couchdb.carlosjg.space/_up"
 ```
 
 Rollback:

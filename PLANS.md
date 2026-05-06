@@ -60,7 +60,7 @@ Create a new `personal-media` IaC repository based on `infra-victus` conventions
 - Local runtime uses `compose/projects/media/.env`.
 - Immich image version is controlled by `IMMICH_VERSION`.
 - NGINX is the public edge for Immich and CouchDB.
-- Production exposes Immich on `NGINX_HTTP_PORT` and CouchDB on `NGINX_COUCHDB_PORT`.
+- Production exposes Immich and CouchDB by HTTPS virtual hosts on `443/tcp`.
 - TLS and DNS can be added later without changing app containers.
 - CouchDB credentials are provided by env, not committed as production secrets.
 - Immich upstream Compose remains reference for service topology.
@@ -130,7 +130,7 @@ Validation:
 
 ```bash
 curl -fsS "http://127.0.0.1:${NGINX_HTTP_PORT:-80}/healthz"
-curl -fsS "http://USER:PASS@127.0.0.1:${NGINX_COUCHDB_PORT:-5984}/_up"
+curl -fsS "https://USER:PASS@couchdb.carlosjg.space/_up"
 ```
 
 Rollback:

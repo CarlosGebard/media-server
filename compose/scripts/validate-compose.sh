@@ -55,7 +55,7 @@ validate_nginx() {
 
 validate_required_dirs() {
 	local dirs=(
-		"$ROOT_DIR/compose/.tmp/media/immich/library"
+		"$ROOT_DIR/compose/.tmp/media/immich/app"
 		"$ROOT_DIR/compose/.tmp/media/immich/postgres"
 		"$ROOT_DIR/compose/.tmp/media/couchdb/data"
 	)

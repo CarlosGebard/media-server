@@ -55,6 +55,7 @@
     owner: "{{ item.owner | default('root') }}"
     group: "{{ item.group | default('root') }}"
     mode: "{{ item.mode }}"
+    recurse: "{{ item.recurse | default(false) }}"
   loop: "{{ deploy_stack.directories | default([]) }}"
 
 - name: Stage media runtime secret files

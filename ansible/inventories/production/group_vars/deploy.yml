@@ -26,9 +26,9 @@ deploy:
       - { path: "{{ srv_apps_root }}/media/couchdb/local.d", mode: "0755" }
       - { path: "{{ srv_apps_root }}/media/nginx/conf.d", mode: "0755" }
       - { path: "{{ srv_apps_root }}/media/nginx/acme", mode: "0755" }
-      - { path: "{{ srv_data_root }}/media/immich/library", mode: "0750" }
-      - { path: "{{ srv_data_root }}/media/immich/postgres", mode: "0750" }
-      - { path: "{{ srv_data_root }}/media/couchdb/data", owner: "5984", group: "5984", mode: "0750" }
+      - { path: "{{ srv_data_root }}/media/immich/app", mode: "0750" }
+      - { path: "{{ srv_data_root }}/media/immich/postgres", owner: "999", group: "999", mode: "0750", recurse: true }
+      - { path: "{{ srv_data_root }}/media/couchdb/data", owner: "5984", group: "5984", mode: "0750", recurse: true }
       - { path: "{{ srv_secrets_root }}/runtime", mode: "0750" }
     staged_secret_files:
       - source_file: "{{ lookup('ansible.builtin.env', 'MEDIA_RUNTIME_ENV_SOURCE_FILE') | default('', true) }}"

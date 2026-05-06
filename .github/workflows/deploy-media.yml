@@ -90,7 +90,7 @@ jobs:
           }
           {
             printf 'IMMICH_VERSION=%s\n' "$(quote_env "${IMMICH_VERSION:-v2}")"
-            printf 'UPLOAD_LOCATION=%s\n' "$(quote_env "/srv/data/media/immich/library")"
+            printf 'UPLOAD_LOCATION=%s\n' "$(quote_env "/srv/data/media/immich/app")"
             printf 'DB_DATA_LOCATION=%s\n' "$(quote_env "/srv/data/media/immich/postgres")"
             printf 'DB_PASSWORD=%s\n' "$(quote_env "$DB_PASSWORD")"
             printf 'DB_USERNAME=%s\n' "$(quote_env "postgres")"

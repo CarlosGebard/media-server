@@ -29,10 +29,11 @@ help:
 		'  make clean-local     Remove local temp data after stack is down'
 
 init:
-	mkdir -p compose/.tmp/media/immich/library
+	mkdir -p compose/.tmp/media/immich/app
 	mkdir -p compose/.tmp/media/immich/postgres
 	mkdir -p compose/.tmp/media/couchdb/data
-	chown 5984:5984 compose/.tmp/media/couchdb/data 2>/dev/null || chmod 0777 compose/.tmp/media/couchdb/data
+	chown 999:999 compose/.tmp/media/immich/postgres 2>/dev/null || chmod 0777 compose/.tmp/media/immich/postgres 2>/dev/null || true
+	chown 5984:5984 compose/.tmp/media/couchdb/data 2>/dev/null || chmod 0777 compose/.tmp/media/couchdb/data 2>/dev/null || true
 	docker network inspect $(NETWORK) >/dev/null 2>&1 || docker network create $(NETWORK)
 
 validate: init
