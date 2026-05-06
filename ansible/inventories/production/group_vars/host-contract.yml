@@ -1,0 +1,8 @@
+---
+srv_root: /srv
+srv_apps_root: "{{ srv_root }}/apps"
+srv_data_root: "{{ srv_root }}/data"
+srv_logs_root: "{{ srv_root }}/logs"
+srv_secrets_root: "{{ srv_root }}/secrets"
+srv_backups_root: "{{ srv_root }}/backups"
+

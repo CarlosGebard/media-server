@@ -1,0 +1,97 @@
+name: Validate Personal Media Infra
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_ref:
+        description: Git ref to validate
+        required: true
+        default: main
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/**"
+      - "ansible/**"
+      - "compose/**"
+      - "tests/ansible/**"
+      - "Makefile"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/**"
+      - "ansible/**"
+      - "compose/**"
+      - "tests/ansible/**"
+      - "Makefile"
+
+concurrency:
+  group: personal-media-validate
+  cancel-in-progress: false
+
+env:
+  VALIDATE_GIT_REF: ${{ inputs.git_ref || github.sha }}
+
+jobs:
+  validate:
+    name: Validate Ansible, Compose, and Infisical
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ env.VALIDATE_GIT_REF }}
+
+      - name: Pull validation secrets from Infisical via OIDC
+        uses: Infisical/secrets-action@v1.0.10
+        with:
+          method: oidc
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ vars.INFISICAL_ENV_SLUG }}
+          secret-path: ${{ vars.INFISICAL_SECRET_PATH }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible
+        run: python -m pip install --upgrade pip ansible-core
+
+      - name: Validate Ansible integrity
+        run: ./tests/ansible/check.sh
+
+      - name: Validate Docker Compose
+        run: docker compose --env-file compose/env/media.env.example -f compose/projects/media/compose.yml -f compose/projects/media/compose.prod.yml config >/dev/null
+
+      - name: Assert Infisical secret contract
+        env:
+          PROD_HOST: ${{ env.PROD_HOST }}
+          PROD_SSH_PRIVATE_KEY: ${{ env.PROD_SSH_PRIVATE_KEY }}
+          DB_PASSWORD: ${{ env.DB_PASSWORD }}
+          COUCHDB_USER: ${{ env.COUCHDB_USER }}
+          COUCHDB_PASSWORD: ${{ env.COUCHDB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          errors=()
+          [[ -n "${PROD_HOST}" ]] || errors+=("Missing PROD_HOST")
+          [[ -n "${PROD_SSH_PRIVATE_KEY}" ]] || errors+=("Missing PROD_SSH_PRIVATE_KEY")
+          [[ -n "${DB_PASSWORD}" ]] || errors+=("Missing DB_PASSWORD")
+          [[ -n "${COUCHDB_USER}" ]] || errors+=("Missing COUCHDB_USER")
+          [[ -n "${COUCHDB_PASSWORD}" ]] || errors+=("Missing COUCHDB_PASSWORD")
+          if [[ ${#errors[@]} -gt 0 ]]; then
+            printf '%s\n' "${errors[@]}" >&2
+            exit 1
+          fi

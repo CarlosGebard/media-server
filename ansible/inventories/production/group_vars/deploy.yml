@@ -1,0 +1,56 @@
+---
+shared_docker_networks:
+  - infra_shared_backend
+
+deploy:
+  media:
+    name: media
+    project_dir: "{{ srv_apps_root }}/media"
+    compose_files:
+      - src: "{{ playbook_dir }}/../../compose/projects/media/compose.yml"
+        dest: "{{ srv_apps_root }}/media/compose.yml"
+      - src: "{{ playbook_dir }}/../../compose/projects/media/compose.prod.yml"
+        dest: "{{ srv_apps_root }}/media/compose.prod.yml"
+    compose_cli_files:
+      - "{{ srv_apps_root }}/media/compose.yml"
+      - "{{ srv_apps_root }}/media/compose.prod.yml"
+    env_path: "{{ srv_secrets_root }}/runtime/media.env"
+    compose_services:
+      - immich-server
+      - immich-machine-learning
+      - redis
+      - database
+      - couchdb
+      - nginx
+    directories:
+      - { path: "{{ srv_apps_root }}/media/couchdb/local.d", mode: "0755" }
+      - { path: "{{ srv_apps_root }}/media/nginx/conf.d", mode: "0755" }
+      - { path: "{{ srv_data_root }}/media/immich/library", mode: "0750" }
+      - { path: "{{ srv_data_root }}/media/immich/postgres", mode: "0750" }
+      - { path: "{{ srv_data_root }}/media/couchdb/data", owner: "5984", group: "5984", mode: "0750" }
+      - { path: "{{ srv_secrets_root }}/runtime", mode: "0750" }
+    staged_secret_files:
+      - source_file: "{{ lookup('ansible.builtin.env', 'MEDIA_RUNTIME_ENV_SOURCE_FILE') | default('', true) }}"
+        dest: "{{ srv_secrets_root }}/runtime/media.env"
+        mode: "0600"
+        recreate_services:
+          - immich-server
+          - immich-machine-learning
+          - database
+          - couchdb
+          - nginx
+    required_files:
+      - "{{ srv_secrets_root }}/runtime/media.env"
+    config_files:
+      - src: "{{ playbook_dir }}/../../compose/configs/couchdb/local.d/local.ini"
+        dest: "{{ srv_apps_root }}/media/couchdb/local.d/local.ini"
+        restart_services:
+          - couchdb
+      - src: "{{ playbook_dir }}/../../compose/configs/nginx/nginx.conf"
+        dest: "{{ srv_apps_root }}/media/nginx/nginx.conf"
+        restart_services:
+          - nginx
+      - src: "{{ playbook_dir }}/../../compose/configs/nginx/conf.d/media.conf"
+        dest: "{{ srv_apps_root }}/media/nginx/conf.d/media.conf"
+        restart_services:
+          - nginx

@@ -1,0 +1,153 @@
+---
+- name: Derive media compose CLI args
+  ansible.builtin.set_fact:
+    deploy_media_compose_args: >-
+      {{
+        '-f ' ~ (deploy_stack.compose_cli_files | join(' -f '))
+      }}
+
+- name: Ensure media deploy directories exist
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode }}"
+  loop: "{{ deploy_stack.directories | default([]) }}"
+
+- name: Stage media runtime secret files
+  ansible.builtin.copy:
+    src: "{{ item.source_file }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode | default('0600') }}"
+  loop: "{{ deploy_stack.staged_secret_files | default([]) }}"
+  when: item.source_file | default('') | length > 0
+  register: deploy_media_secret_copy
+
+- name: Assert required media runtime files exist
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ deploy_stack.required_files | default([]) }}"
+  register: deploy_media_required_files
+
+- name: Stop media deploy when required files missing
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+    fail_msg: "Missing required media file: {{ item.item }}"
+  loop: "{{ deploy_media_required_files.results }}"
+
+- name: Copy media static config files
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode | default('0644') }}"
+  loop: "{{ deploy_stack.config_files | default([]) }}"
+  register: deploy_media_config_copy
+
+- name: Copy media stack compose files
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ deploy_stack.compose_files }}"
+  register: deploy_media_compose_copy
+
+- name: Link active environment file into media stack directory
+  ansible.builtin.file:
+    src: "{{ deploy_stack.env_path }}"
+    dest: "{{ deploy_stack.project_dir }}/.env"
+    state: link
+  register: deploy_media_env_link
+
+- name: Derive media runtime actions
+  ansible.builtin.set_fact:
+    deploy_media_recreate_services: >-
+      {{
+        (
+          (
+            deploy_media_secret_copy.results | default([])
+            | selectattr('changed')
+            | map(attribute='item.recreate_services')
+            | select('defined')
+            | list
+            | flatten
+          )
+          + (
+            deploy_stack.compose_services | default([])
+            if (
+              deploy_media_compose_copy.results | default([])
+              | selectattr('changed')
+              | list
+              | length
+            ) > 0 or deploy_media_env_link.changed
+            else []
+          )
+        ) | unique
+      }}
+
+- name: Derive media config-only restarts
+  ansible.builtin.set_fact:
+    deploy_media_restart_services: >-
+      {{
+        (
+          deploy_media_config_copy.results | default([])
+          | selectattr('changed')
+          | map(attribute='item.restart_services')
+          | select('defined')
+          | list
+          | flatten
+        ) | difference(deploy_media_recreate_services | default([]))
+      }}
+
+- name: Validate rendered media Compose configuration
+  ansible.builtin.command:
+    cmd: docker compose --env-file {{ deploy_stack.env_path }} {{ deploy_media_compose_args }} config
+  changed_when: false
+
+- name: Pull media stack images
+  ansible.builtin.command:
+    cmd: docker compose --env-file {{ deploy_stack.env_path }} {{ deploy_media_compose_args }} pull
+  register: deploy_media_pull
+  changed_when: >-
+    'Downloaded newer image' in deploy_media_pull.stdout or
+    'Pull complete' in deploy_media_pull.stdout or
+    'newer image' in deploy_media_pull.stdout
+
+- name: Deploy media stack
+  ansible.builtin.command:
+    cmd: docker compose --env-file {{ deploy_stack.env_path }} {{ deploy_media_compose_args }} up -d
+  register: deploy_media_up
+  changed_when: >-
+    'Started' in deploy_media_up.stdout or
+    'Recreated' in deploy_media_up.stdout or
+    'Creating' in deploy_media_up.stdout
+
+- name: Force recreate media services with runtime definition changes
+  ansible.builtin.command:
+    cmd: >-
+      docker compose --env-file {{ deploy_stack.env_path }}
+      {{ deploy_media_compose_args }}
+      up -d --force-recreate {{ deploy_media_recreate_services | join(' ') }}
+  when: deploy_media_recreate_services | length > 0
+  register: deploy_media_force_recreate
+  changed_when: >-
+    'Started' in deploy_media_force_recreate.stdout or
+    'Recreated' in deploy_media_force_recreate.stdout or
+    'Creating' in deploy_media_force_recreate.stdout
+
+- name: Restart media services with config-only changes
+  ansible.builtin.command:
+    cmd: >-
+      docker compose --env-file {{ deploy_stack.env_path }}
+      {{ deploy_media_compose_args }}
+      restart {{ deploy_media_restart_services | join(' ') }}
+  when: deploy_media_restart_services | length > 0
+  register: deploy_media_restart
+  changed_when: deploy_media_restart_services | length > 0

@@ -1,0 +1,14 @@
+.DS_Store
+
+# Local runtime state
+compose/.tmp/
+
+# Local env files. Production env is materialized from Infisical.
+compose/projects/*/.env
+*.env
+!.env.example
+!compose/env/*.env.example
+
+# Python/Ansible local noise
+__pycache__/
+*.retry
