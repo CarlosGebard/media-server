@@ -79,7 +79,9 @@ jobs:
           cp compose/env/media.env.example compose/projects/media/.env
           docker compose --env-file compose/projects/media/.env \
             -f compose/projects/media/compose.yml \
+            -f compose/projects/media/compose.wiki.yml \
             -f compose/projects/media/compose.prod.yml \
+            -f compose/projects/media/compose.wiki.prod.yml \
             config >/dev/null
 
       - name: Assert Infisical secret contract
@@ -89,6 +91,8 @@ jobs:
           DB_PASSWORD: ${{ env.DB_PASSWORD }}
           COUCHDB_USER: ${{ env.COUCHDB_USER }}
           COUCHDB_PASSWORD: ${{ env.COUCHDB_PASSWORD }}
+          WIKIJS_DB_USER: ${{ env.WIKIJS_DB_USER }}
+          WIKIJS_DB_PASSWORD: ${{ env.WIKIJS_DB_PASSWORD }}
         run: |
           set -euo pipefail
           errors=()
@@ -97,6 +101,8 @@ jobs:
           [[ -n "${DB_PASSWORD}" ]] || errors+=("Missing DB_PASSWORD")
           [[ -n "${COUCHDB_USER}" ]] || errors+=("Missing COUCHDB_USER")
           [[ -n "${COUCHDB_PASSWORD}" ]] || errors+=("Missing COUCHDB_PASSWORD")
+          [[ -n "${WIKIJS_DB_USER}" ]] || errors+=("Missing WIKIJS_DB_USER")
+          [[ -n "${WIKIJS_DB_PASSWORD}" ]] || errors+=("Missing WIKIJS_DB_PASSWORD")
           if [[ ${#errors[@]} -gt 0 ]]; then
             printf '%s\n' "${errors[@]}" >&2
             exit 1

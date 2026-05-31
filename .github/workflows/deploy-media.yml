@@ -78,11 +78,15 @@ jobs:
           DB_PASSWORD: ${{ env.DB_PASSWORD }}
           COUCHDB_USER: ${{ env.COUCHDB_USER }}
           COUCHDB_PASSWORD: ${{ env.COUCHDB_PASSWORD }}
+          WIKIJS_DB_USER: ${{ env.WIKIJS_DB_USER }}
+          WIKIJS_DB_PASSWORD: ${{ env.WIKIJS_DB_PASSWORD }}
         run: |
           set -euo pipefail
           : "${DB_PASSWORD:?Missing DB_PASSWORD}"
           : "${COUCHDB_USER:?Missing COUCHDB_USER}"
           : "${COUCHDB_PASSWORD:?Missing COUCHDB_PASSWORD}"
+          : "${WIKIJS_DB_USER:?Missing WIKIJS_DB_USER}"
+          : "${WIKIJS_DB_PASSWORD:?Missing WIKIJS_DB_PASSWORD}"
           quote_env() {
             local value="$1"
             value="${value//\'/\\\'}"
@@ -97,6 +101,10 @@ jobs:
             printf 'DB_DATABASE_NAME=%s\n' "$(quote_env "immich")"
             printf 'COUCHDB_USER=%s\n' "$(quote_env "$COUCHDB_USER")"
             printf 'COUCHDB_PASSWORD=%s\n' "$(quote_env "$COUCHDB_PASSWORD")"
+            printf 'WIKIJS_DB_DATA_LOCATION=%s\n' "$(quote_env "/srv/data/media/wiki/postgres")"
+            printf 'WIKIJS_DB_USER=%s\n' "$(quote_env "$WIKIJS_DB_USER")"
+            printf 'WIKIJS_DB_PASSWORD=%s\n' "$(quote_env "$WIKIJS_DB_PASSWORD")"
+            printf 'WIKIJS_DB_NAME=%s\n' "$(quote_env "victus_documentation")"
             printf 'NGINX_BIND_IP=%s\n' "$(quote_env "0.0.0.0")"
             printf 'NGINX_HTTP_PORT=%s\n' "$(quote_env "80")"
             printf 'NGINX_HTTPS_PORT=%s\n' "$(quote_env "443")"
