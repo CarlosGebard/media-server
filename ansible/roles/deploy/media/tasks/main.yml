@@ -10,6 +10,7 @@
     media_public_domains:
       - "immich.{{ lookup('ansible.builtin.env', 'BASE_DOMAIN') | default('carlosjg.space', true) }}"
       - "couchdb.{{ lookup('ansible.builtin.env', 'BASE_DOMAIN') | default('carlosjg.space', true) }}"
+      - "docs.{{ lookup('ansible.builtin.env', 'BASE_DOMAIN') | default('carlosjg.space', true) }}"
     media_cert_name: "media-edge-{{ (lookup('ansible.builtin.env', 'BASE_DOMAIN') | default('carlosjg.space', true)) | replace('.', '-') }}"
     deploy_media_compose_args: >-
       {{
@@ -102,6 +103,7 @@
   vars:
     immich_domain: "{{ media_public_domains[0] }}"
     couchdb_domain: "{{ media_public_domains[1] }}"
+    wiki_domain: "{{ media_public_domains[2] }}"
     media_cert_name: "{{ media_cert_name }}"
     media_tls_enabled: "{{ media_tls_cert.stat.exists }}"
   register: deploy_media_nginx_template_pre_tls
@@ -223,6 +225,7 @@
   vars:
     immich_domain: "{{ media_public_domains[0] }}"
     couchdb_domain: "{{ media_public_domains[1] }}"
+    wiki_domain: "{{ media_public_domains[2] }}"
     media_cert_name: "{{ media_cert_name }}"
     media_tls_enabled: true
   register: deploy_media_nginx_template_tls

@@ -9,11 +9,17 @@ deploy:
     compose_files:
       - src: "{{ playbook_dir }}/../../compose/projects/media/compose.yml"
         dest: "{{ srv_apps_root }}/media/compose.yml"
+      - src: "{{ playbook_dir }}/../../compose/projects/media/compose.wiki.yml"
+        dest: "{{ srv_apps_root }}/media/compose.wiki.yml"
       - src: "{{ playbook_dir }}/../../compose/projects/media/compose.prod.yml"
         dest: "{{ srv_apps_root }}/media/compose.prod.yml"
+      - src: "{{ playbook_dir }}/../../compose/projects/media/compose.wiki.prod.yml"
+        dest: "{{ srv_apps_root }}/media/compose.wiki.prod.yml"
     compose_cli_files:
       - "{{ srv_apps_root }}/media/compose.yml"
+      - "{{ srv_apps_root }}/media/compose.wiki.yml"
       - "{{ srv_apps_root }}/media/compose.prod.yml"
+      - "{{ srv_apps_root }}/media/compose.wiki.prod.yml"
     env_path: "{{ srv_secrets_root }}/runtime/media.env"
     compose_services:
       - immich-server
@@ -21,6 +27,8 @@ deploy:
       - redis
       - database
       - couchdb
+      - wiki
+      - wiki-database
       - nginx
     directories:
       - { path: "{{ srv_apps_root }}/media/couchdb/local.d", mode: "0755" }
@@ -29,6 +37,7 @@ deploy:
       - { path: "{{ srv_data_root }}/media/immich/app", mode: "0750" }
       - { path: "{{ srv_data_root }}/media/immich/postgres", owner: "999", group: "999", mode: "0750", recurse: true }
       - { path: "{{ srv_data_root }}/media/couchdb/data", owner: "5984", group: "5984", mode: "0750", recurse: true }
+      - { path: "{{ srv_data_root }}/media/wiki/postgres", owner: "70", group: "70", mode: "0750", recurse: true }
       - { path: "{{ srv_secrets_root }}/runtime", mode: "0750" }
     staged_secret_files:
       - source_file: "{{ lookup('ansible.builtin.env', 'MEDIA_RUNTIME_ENV_SOURCE_FILE') | default('', true) }}"
@@ -39,6 +48,8 @@ deploy:
           - immich-machine-learning
           - database
           - couchdb
+          - wiki
+          - wiki-database
           - nginx
     required_files:
       - "{{ srv_secrets_root }}/runtime/media.env"

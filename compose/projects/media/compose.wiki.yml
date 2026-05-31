@@ -1,0 +1,44 @@
+services:
+  wiki:
+    image: ghcr.io/requarks/wiki:2
+    container_name: wikijs
+    restart: unless-stopped
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: wiki-database
+      DB_PORT: 5432
+      DB_USER: ${WIKIJS_DB_USER:-wikijs}
+      DB_PASS: ${WIKIJS_DB_PASSWORD}
+      DB_NAME: ${WIKIJS_DB_NAME:-victus_documentation}
+    depends_on:
+      wiki-database:
+        condition: service_healthy
+    networks:
+      - wiki_backend
+      - media_backend
+
+  wiki-database:
+    image: postgres:15-alpine
+    container_name: wikijs_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${WIKIJS_DB_NAME:-victus_documentation}
+      POSTGRES_USER: ${WIKIJS_DB_USER:-wikijs}
+      POSTGRES_PASSWORD: ${WIKIJS_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${WIKIJS_DB_USER:-wikijs} -d ${WIKIJS_DB_NAME:-victus_documentation}"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - wiki_backend
+
+  nginx:
+    depends_on:
+      wiki:
+        condition: service_started
+
+networks:
+  wiki_backend:
+    driver: bridge

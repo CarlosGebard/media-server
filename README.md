@@ -9,6 +9,7 @@ Main stack:
 - Valkey
 - Immich Postgres vector database
 - CouchDB
+- Wiki.js
 - NGINX public edge
 
 Runtime source of truth is Docker Compose. Ansible only stages files, asserts secrets, and runs Compose.
@@ -26,6 +27,8 @@ Local edge:
 - Immich: `http://127.0.0.1:8080`
 - CouchDB through NGINX: `http://127.0.0.1:15984`
 - CouchDB direct dev port: `http://127.0.0.1:5984`
+- Wiki.js through NGINX: `http://127.0.0.1:13000`
+- Wiki.js direct dev port: `http://127.0.0.1:3000`
 
 ## Production
 
@@ -45,6 +48,7 @@ Production edge:
 
 - Immich is exposed at `https://immich.carlosjg.space`.
 - CouchDB is exposed at `https://couchdb.carlosjg.space`.
+- Wiki.js is exposed at `https://docs.carlosjg.space`.
 - HTTP on `80/tcp` is kept for ACME challenge and redirect.
 - Tailscale is not part of this stack.
 
@@ -65,6 +69,7 @@ Production layout:
 /srv/data/media/immich/app       # Immich /data root
 /srv/data/media/immich/postgres  # Immich Postgres
 /srv/data/media/couchdb/data     # CouchDB
+/srv/data/media/wiki/postgres    # Wiki.js Postgres
 ```
 
 Immich creates `library`, `upload`, `thumbs`, `profile`, `encoded-video`, and `backups` under `/srv/data/media/immich/app`.

@@ -110,15 +110,17 @@ Run from host after deploy:
 ```bash
 cd /srv/apps/media
 docker compose --env-file /srv/secrets/runtime/media.env \
-  -f compose.yml -f compose.prod.yml ps
+  -f compose.yml -f compose.wiki.yml -f compose.prod.yml -f compose.wiki.prod.yml ps
 curl -fsS http://127.0.0.1/healthz
 curl -fsS "https://USER:PASS@couchdb.carlosjg.space/_up"
+curl -fsS "https://docs.carlosjg.space"
 ```
 
 Expected public ports:
 
 - `80/tcp` -> ACME challenge and HTTP-to-HTTPS redirect.
 - `443/tcp` -> Immich and CouchDB through NGINX.
+- `443/tcp` -> Immich, CouchDB, and Wiki.js through NGINX.
 
 No Tailscale dependency exists for this stack.
 

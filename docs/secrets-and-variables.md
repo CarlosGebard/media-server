@@ -19,6 +19,7 @@ Runtime secrets come from Infisical via GitHub Actions OIDC.
 - `COUCHDB_USER`
 - `COUCHDB_PASSWORD`
 - `IMMICH_VERSION` optional, defaults to `v2`
+- `WIKIJS_DB_PASSWORD` for Wiki.js Postgres
 
 ## Runtime File
 

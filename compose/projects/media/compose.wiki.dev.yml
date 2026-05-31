@@ -1,0 +1,8 @@
+services:
+  wiki:
+    ports:
+      - "${WIKIJS_BIND_IP:-127.0.0.1}:${WIKIJS_HTTP_PORT:-3000}:3000"
+
+  wiki-database:
+    volumes:
+      - ../../.tmp/media/wiki/postgres:/var/lib/postgresql/data
