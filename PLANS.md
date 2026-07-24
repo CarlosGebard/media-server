@@ -73,6 +73,8 @@ Create a new `personal-media` IaC repository based on `infra-victus` conventions
 - Nextcloud persists its HTML tree as `www-data` and starts cron only after the
   application health check completes, avoiding first-deploy initialization
   races.
+- `IMMICH_DB_PASSWORD` remains the external secret contract and Compose maps it
+  to Immich's required internal `DB_PASSWORD` variable.
 
 ## Milestones
 

@@ -5,6 +5,10 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      # Keep the Infisical secret name explicit while satisfying Immich's
+      # runtime contract, which requires DB_PASSWORD inside the container.
+      DB_PASSWORD: ${IMMICH_DB_PASSWORD}
     depends_on:
       redis:
         condition: service_healthy
