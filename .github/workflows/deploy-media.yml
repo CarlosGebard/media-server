@@ -7,15 +7,6 @@ on:
         description: Git ref to deploy
         required: true
         default: main
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/**"
-      - "ansible/**"
-      - "compose/**"
-      - "tests/ansible/**"
-      - "Makefile"
 
 concurrency:
   group: personal-media-deploy
@@ -44,14 +35,45 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_GIT_REF }}
 
-      - name: Pull secrets from Infisical via OIDC
+      - name: Pull global deployment secrets from Infisical via OIDC
         uses: Infisical/secrets-action@v1.0.10
         with:
           method: oidc
+          domain: ${{ vars.INFISICAL_API_URL }}
           identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
           project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
           env-slug: ${{ vars.INFISICAL_ENV_SLUG }}
-          secret-path: ${{ vars.INFISICAL_SECRET_PATH }}
+          secret-path: /global
+
+      - name: Pull Nextcloud secrets from Infisical via OIDC
+        uses: Infisical/secrets-action@v1.0.10
+        with:
+          method: oidc
+          domain: ${{ vars.INFISICAL_API_URL }}
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ vars.INFISICAL_ENV_SLUG }}
+          secret-path: /nextcloud
+
+      - name: Pull Bitwarden secrets from Infisical via OIDC
+        uses: Infisical/secrets-action@v1.0.10
+        with:
+          method: oidc
+          domain: ${{ vars.INFISICAL_API_URL }}
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ vars.INFISICAL_ENV_SLUG }}
+          secret-path: /bitwarden
+
+      - name: Pull Infisical runtime secrets via OIDC
+        uses: Infisical/secrets-action@v1.0.10
+        with:
+          method: oidc
+          domain: ${{ vars.INFISICAL_API_URL }}
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ vars.INFISICAL_ENV_SLUG }}
+          secret-path: /infisical
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -75,18 +97,33 @@ jobs:
       - name: Materialize media runtime env
         env:
           IMMICH_VERSION: ${{ env.IMMICH_VERSION }}
-          DB_PASSWORD: ${{ env.DB_PASSWORD }}
-          COUCHDB_USER: ${{ env.COUCHDB_USER }}
+          IMMICH_DB_PASSWORD: ${{ env.IMMICH_DB_PASSWORD }}
           COUCHDB_PASSWORD: ${{ env.COUCHDB_PASSWORD }}
-          WIKIJS_DB_USER: ${{ env.WIKIJS_DB_USER }}
-          WIKIJS_DB_PASSWORD: ${{ env.WIKIJS_DB_PASSWORD }}
+          NEXTCLOUD_ADMIN_PASSWORD: ${{ env.NEXTCLOUD_ADMIN_PASSWORD }}
+          NEXTCLOUD_DB_PASSWORD: ${{ env.NEXTCLOUD_DB_PASSWORD }}
+          NEXTCLOUD_DB_ROOT_PASSWORD: ${{ env.NEXTCLOUD_DB_ROOT_PASSWORD }}
+          BITWARDEN_DB_PASSWORD: ${{ env.BITWARDEN_DB_PASSWORD }}
+          BITWARDEN_INSTALLATION_KEY: ${{ env.BITWARDEN_INSTALLATION_KEY }}
+          BITWARDEN_SMTP_PASSWORD: ${{ env.BITWARDEN_SMTP_PASSWORD }}
+          INFISICAL_ENCRYPTION_KEY: ${{ env.INFISICAL_ENCRYPTION_KEY }}
+          INFISICAL_AUTH_SECRET: ${{ env.INFISICAL_AUTH_SECRET }}
+          INFISICAL_DB_PASSWORD: ${{ env.INFISICAL_DB_PASSWORD }}
+          BITWARDEN_INSTALLATION_ID: ${{ env.BITWARDEN_INSTALLATION_ID }}
+          BITWARDEN_DISABLE_USER_REGISTRATION: ${{ env.BITWARDEN_DISABLE_USER_REGISTRATION }}
         run: |
           set -euo pipefail
-          : "${DB_PASSWORD:?Missing DB_PASSWORD}"
-          : "${COUCHDB_USER:?Missing COUCHDB_USER}"
+          : "${IMMICH_DB_PASSWORD:?Missing IMMICH_DB_PASSWORD}"
           : "${COUCHDB_PASSWORD:?Missing COUCHDB_PASSWORD}"
-          : "${WIKIJS_DB_USER:?Missing WIKIJS_DB_USER}"
-          : "${WIKIJS_DB_PASSWORD:?Missing WIKIJS_DB_PASSWORD}"
+          : "${NEXTCLOUD_ADMIN_PASSWORD:?Missing NEXTCLOUD_ADMIN_PASSWORD}"
+          : "${NEXTCLOUD_DB_PASSWORD:?Missing NEXTCLOUD_DB_PASSWORD}"
+          : "${NEXTCLOUD_DB_ROOT_PASSWORD:?Missing NEXTCLOUD_DB_ROOT_PASSWORD}"
+          : "${BITWARDEN_DB_PASSWORD:?Missing BITWARDEN_DB_PASSWORD}"
+          : "${BITWARDEN_INSTALLATION_KEY:?Missing BITWARDEN_INSTALLATION_KEY}"
+          : "${BITWARDEN_SMTP_PASSWORD:?Missing BITWARDEN_SMTP_PASSWORD}"
+          : "${INFISICAL_ENCRYPTION_KEY:?Missing INFISICAL_ENCRYPTION_KEY}"
+          : "${INFISICAL_AUTH_SECRET:?Missing INFISICAL_AUTH_SECRET}"
+          : "${INFISICAL_DB_PASSWORD:?Missing INFISICAL_DB_PASSWORD}"
+          : "${BITWARDEN_INSTALLATION_ID:?Missing BITWARDEN_INSTALLATION_ID}"
           quote_env() {
             local value="$1"
             value="${value//\'/\\\'}"
@@ -96,15 +133,41 @@ jobs:
             printf 'IMMICH_VERSION=%s\n' "$(quote_env "${IMMICH_VERSION:-v2}")"
             printf 'UPLOAD_LOCATION=%s\n' "$(quote_env "/srv/data/media/immich/app")"
             printf 'DB_DATA_LOCATION=%s\n' "$(quote_env "/srv/data/media/immich/postgres")"
-            printf 'DB_PASSWORD=%s\n' "$(quote_env "$DB_PASSWORD")"
+            printf 'IMMICH_DB_PASSWORD=%s\n' "$(quote_env "$IMMICH_DB_PASSWORD")"
             printf 'DB_USERNAME=%s\n' "$(quote_env "postgres")"
             printf 'DB_DATABASE_NAME=%s\n' "$(quote_env "immich")"
-            printf 'COUCHDB_USER=%s\n' "$(quote_env "$COUCHDB_USER")"
+            printf 'COUCHDB_USER=%s\n' "$(quote_env "carlos")"
             printf 'COUCHDB_PASSWORD=%s\n' "$(quote_env "$COUCHDB_PASSWORD")"
-            printf 'WIKIJS_DB_DATA_LOCATION=%s\n' "$(quote_env "/srv/data/media/wiki/postgres")"
-            printf 'WIKIJS_DB_USER=%s\n' "$(quote_env "$WIKIJS_DB_USER")"
-            printf 'WIKIJS_DB_PASSWORD=%s\n' "$(quote_env "$WIKIJS_DB_PASSWORD")"
-            printf 'WIKIJS_DB_NAME=%s\n' "$(quote_env "victus_documentation")"
+            printf 'NEXTCLOUD_VERSION=%s\n' "$(quote_env "${NEXTCLOUD_VERSION:-34-apache}")"
+            printf 'NEXTCLOUD_DB_NAME=%s\n' "$(quote_env "nextcloud")"
+            printf 'NEXTCLOUD_DB_USER=%s\n' "$(quote_env "nextcloud")"
+            printf 'NEXTCLOUD_DB_PASSWORD=%s\n' "$(quote_env "$NEXTCLOUD_DB_PASSWORD")"
+            printf 'NEXTCLOUD_DB_ROOT_PASSWORD=%s\n' "$(quote_env "$NEXTCLOUD_DB_ROOT_PASSWORD")"
+            printf 'NEXTCLOUD_ADMIN_USER=%s\n' "$(quote_env "admin")"
+            printf 'NEXTCLOUD_ADMIN_PASSWORD=%s\n' "$(quote_env "$NEXTCLOUD_ADMIN_PASSWORD")"
+            printf 'NEXTCLOUD_TRUSTED_DOMAINS=%s\n' "$(quote_env "cloud.carlosjg.space")"
+            printf 'NEXTCLOUD_TRUSTED_PROXIES=%s\n' "$(quote_env "172.30.0.2")"
+            printf 'NEXTCLOUD_OVERWRITE_CLI_URL=%s\n' "$(quote_env "https://cloud.carlosjg.space")"
+            printf 'NEXTCLOUD_HTML_DATA_LOCATION=%s\n' "$(quote_env "/srv/data/media/nextcloud/html")"
+            printf 'NEXTCLOUD_DB_DATA_LOCATION=%s\n' "$(quote_env "/srv/data/media/nextcloud/mariadb")"
+            printf 'NEXTCLOUD_PHP_MEMORY_LIMIT=%s\n' "$(quote_env "512M")"
+            printf 'NEXTCLOUD_UPLOAD_LIMIT=%s\n' "$(quote_env "4G")"
+            printf 'BITWARDEN_VERSION=%s\n' "$(quote_env "latest")"
+            printf 'BITWARDEN_DOMAIN=%s\n' "$(quote_env "vault.carlosjg.space")"
+            printf 'BITWARDEN_DB_PASSWORD=%s\n' "$(quote_env "$BITWARDEN_DB_PASSWORD")"
+            printf 'BITWARDEN_INSTALLATION_ID=%s\n' "$(quote_env "$BITWARDEN_INSTALLATION_ID")"
+            printf 'BITWARDEN_INSTALLATION_KEY=%s\n' "$(quote_env "$BITWARDEN_INSTALLATION_KEY")"
+            printf 'BITWARDEN_SMTP_PASSWORD=%s\n' "$(quote_env "$BITWARDEN_SMTP_PASSWORD")"
+            printf 'BITWARDEN_SMTP_FROM_EMAIL=%s\n' "$(quote_env "vault@carlosjg.space")"
+            printf 'BITWARDEN_DISABLE_USER_REGISTRATION=%s\n' "$(quote_env "${BITWARDEN_DISABLE_USER_REGISTRATION:-false}")"
+            printf 'BITWARDEN_DB_DATA_LOCATION=%s\n' "$(quote_env "/srv/data/media/bitwarden/mariadb")"
+            printf 'BITWARDEN_DATA_LOCATION=%s\n' "$(quote_env "/srv/data/media/bitwarden/data")"
+            printf 'INFISICAL_VERSION=%s\n' "$(quote_env "v0.160.7")"
+            printf 'INFISICAL_ENCRYPTION_KEY=%s\n' "$(quote_env "$INFISICAL_ENCRYPTION_KEY")"
+            printf 'INFISICAL_AUTH_SECRET=%s\n' "$(quote_env "$INFISICAL_AUTH_SECRET")"
+            printf 'INFISICAL_DB_PASSWORD=%s\n' "$(quote_env "$INFISICAL_DB_PASSWORD")"
+            printf 'INFISICAL_SITE_URL=%s\n' "$(quote_env "https://secrets.carlosjg.space")"
+            printf 'INFISICAL_DB_DATA_LOCATION=%s\n' "$(quote_env "/srv/data/media/infisical/postgres")"
             printf 'NGINX_BIND_IP=%s\n' "$(quote_env "0.0.0.0")"
             printf 'NGINX_HTTP_PORT=%s\n' "$(quote_env "80")"
             printf 'NGINX_HTTPS_PORT=%s\n' "$(quote_env "443")"

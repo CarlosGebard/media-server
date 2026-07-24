@@ -16,15 +16,6 @@ on:
       - "compose/**"
       - "tests/ansible/**"
       - "Makefile"
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/**"
-      - "ansible/**"
-      - "compose/**"
-      - "tests/ansible/**"
-      - "Makefile"
 
 concurrency:
   group: personal-media-validate
@@ -53,14 +44,45 @@ jobs:
         with:
           ref: ${{ env.VALIDATE_GIT_REF }}
 
-      - name: Pull validation secrets from Infisical via OIDC
+      - name: Pull global deployment secrets from Infisical via OIDC
         uses: Infisical/secrets-action@v1.0.10
         with:
           method: oidc
+          domain: ${{ vars.INFISICAL_API_URL }}
           identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
           project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
           env-slug: ${{ vars.INFISICAL_ENV_SLUG }}
-          secret-path: ${{ vars.INFISICAL_SECRET_PATH }}
+          secret-path: /global
+
+      - name: Pull Nextcloud secrets from Infisical via OIDC
+        uses: Infisical/secrets-action@v1.0.10
+        with:
+          method: oidc
+          domain: ${{ vars.INFISICAL_API_URL }}
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ vars.INFISICAL_ENV_SLUG }}
+          secret-path: /nextcloud
+
+      - name: Pull Bitwarden secrets from Infisical via OIDC
+        uses: Infisical/secrets-action@v1.0.10
+        with:
+          method: oidc
+          domain: ${{ vars.INFISICAL_API_URL }}
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ vars.INFISICAL_ENV_SLUG }}
+          secret-path: /bitwarden
+
+      - name: Pull Infisical runtime secrets via OIDC
+        uses: Infisical/secrets-action@v1.0.10
+        with:
+          method: oidc
+          domain: ${{ vars.INFISICAL_API_URL }}
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ vars.INFISICAL_ENV_SLUG }}
+          secret-path: /infisical
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -79,30 +101,42 @@ jobs:
           cp compose/env/media.env.example compose/projects/media/.env
           docker compose --env-file compose/projects/media/.env \
             -f compose/projects/media/compose.yml \
-            -f compose/projects/media/compose.wiki.yml \
             -f compose/projects/media/compose.prod.yml \
-            -f compose/projects/media/compose.wiki.prod.yml \
             config >/dev/null
 
       - name: Assert Infisical secret contract
         env:
           PROD_HOST: ${{ env.PROD_HOST }}
           PROD_SSH_PRIVATE_KEY: ${{ env.PROD_SSH_PRIVATE_KEY }}
-          DB_PASSWORD: ${{ env.DB_PASSWORD }}
-          COUCHDB_USER: ${{ env.COUCHDB_USER }}
+          IMMICH_DB_PASSWORD: ${{ env.IMMICH_DB_PASSWORD }}
           COUCHDB_PASSWORD: ${{ env.COUCHDB_PASSWORD }}
-          WIKIJS_DB_USER: ${{ env.WIKIJS_DB_USER }}
-          WIKIJS_DB_PASSWORD: ${{ env.WIKIJS_DB_PASSWORD }}
+          NEXTCLOUD_ADMIN_PASSWORD: ${{ env.NEXTCLOUD_ADMIN_PASSWORD }}
+          NEXTCLOUD_DB_PASSWORD: ${{ env.NEXTCLOUD_DB_PASSWORD }}
+          NEXTCLOUD_DB_ROOT_PASSWORD: ${{ env.NEXTCLOUD_DB_ROOT_PASSWORD }}
+          BITWARDEN_DB_PASSWORD: ${{ env.BITWARDEN_DB_PASSWORD }}
+          BITWARDEN_INSTALLATION_KEY: ${{ env.BITWARDEN_INSTALLATION_KEY }}
+          BITWARDEN_SMTP_PASSWORD: ${{ env.BITWARDEN_SMTP_PASSWORD }}
+          INFISICAL_ENCRYPTION_KEY: ${{ env.INFISICAL_ENCRYPTION_KEY }}
+          INFISICAL_AUTH_SECRET: ${{ env.INFISICAL_AUTH_SECRET }}
+          INFISICAL_DB_PASSWORD: ${{ env.INFISICAL_DB_PASSWORD }}
+          BITWARDEN_INSTALLATION_ID: ${{ env.BITWARDEN_INSTALLATION_ID }}
         run: |
           set -euo pipefail
           errors=()
           [[ -n "${PROD_HOST}" ]] || errors+=("Missing PROD_HOST")
           [[ -n "${PROD_SSH_PRIVATE_KEY}" ]] || errors+=("Missing PROD_SSH_PRIVATE_KEY")
-          [[ -n "${DB_PASSWORD}" ]] || errors+=("Missing DB_PASSWORD")
-          [[ -n "${COUCHDB_USER}" ]] || errors+=("Missing COUCHDB_USER")
+          [[ -n "${IMMICH_DB_PASSWORD}" ]] || errors+=("Missing IMMICH_DB_PASSWORD")
           [[ -n "${COUCHDB_PASSWORD}" ]] || errors+=("Missing COUCHDB_PASSWORD")
-          [[ -n "${WIKIJS_DB_USER}" ]] || errors+=("Missing WIKIJS_DB_USER")
-          [[ -n "${WIKIJS_DB_PASSWORD}" ]] || errors+=("Missing WIKIJS_DB_PASSWORD")
+          [[ -n "${NEXTCLOUD_ADMIN_PASSWORD}" ]] || errors+=("Missing NEXTCLOUD_ADMIN_PASSWORD")
+          [[ -n "${NEXTCLOUD_DB_PASSWORD}" ]] || errors+=("Missing NEXTCLOUD_DB_PASSWORD")
+          [[ -n "${NEXTCLOUD_DB_ROOT_PASSWORD}" ]] || errors+=("Missing NEXTCLOUD_DB_ROOT_PASSWORD")
+          [[ -n "${BITWARDEN_DB_PASSWORD}" ]] || errors+=("Missing BITWARDEN_DB_PASSWORD")
+          [[ -n "${BITWARDEN_INSTALLATION_KEY}" ]] || errors+=("Missing BITWARDEN_INSTALLATION_KEY")
+          [[ -n "${BITWARDEN_SMTP_PASSWORD}" ]] || errors+=("Missing BITWARDEN_SMTP_PASSWORD")
+          [[ -n "${INFISICAL_ENCRYPTION_KEY}" ]] || errors+=("Missing INFISICAL_ENCRYPTION_KEY")
+          [[ -n "${INFISICAL_AUTH_SECRET}" ]] || errors+=("Missing INFISICAL_AUTH_SECRET")
+          [[ -n "${INFISICAL_DB_PASSWORD}" ]] || errors+=("Missing INFISICAL_DB_PASSWORD")
+          [[ -n "${BITWARDEN_INSTALLATION_ID}" ]] || errors+=("Missing BITWARDEN_INSTALLATION_ID")
           if [[ ${#errors[@]} -gt 0 ]]; then
             printf '%s\n' "${errors[@]}" >&2
             exit 1

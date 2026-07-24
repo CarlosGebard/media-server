@@ -1,0 +1,65 @@
+name: Debug Infisical OIDC
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_ref:
+        description: Git ref to test
+        required: true
+        default: main
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  oidc:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.git_ref }}
+
+      - name: Authenticate and fetch global probe path
+        uses: Infisical/secrets-action@v1.0.10
+        with:
+          method: oidc
+          domain: ${{ vars.INFISICAL_API_URL }}
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ vars.INFISICAL_ENV_SLUG }}
+          secret-path: /global
+
+      - name: Authenticate and fetch Nextcloud probe path
+        uses: Infisical/secrets-action@v1.0.10
+        with:
+          method: oidc
+          domain: ${{ vars.INFISICAL_API_URL }}
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ vars.INFISICAL_ENV_SLUG }}
+          secret-path: /nextcloud
+
+      - name: Authenticate and fetch Bitwarden probe path
+        uses: Infisical/secrets-action@v1.0.10
+        with:
+          method: oidc
+          domain: ${{ vars.INFISICAL_API_URL }}
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ vars.INFISICAL_ENV_SLUG }}
+          secret-path: /bitwarden
+
+      - name: Authenticate and fetch Infisical probe path
+        uses: Infisical/secrets-action@v1.0.10
+        with:
+          method: oidc
+          domain: ${{ vars.INFISICAL_API_URL }}
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ vars.INFISICAL_ENV_SLUG }}
+          secret-path: /infisical
+
+      - name: Report success without exposing secrets
+        run: echo "Infisical OIDC authentication and secret-path access succeeded."
