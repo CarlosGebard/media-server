@@ -145,6 +145,11 @@ Expected public ports:
 
 No Tailscale dependency exists for this stack.
 
+NGINX reaches application services by their Docker service names. Do not assign
+static container IPs. Proxy-aware applications trust only the CIDR of their
+private Docker network, so a recreated NGINX container receives a safe dynamic
+address without changing the proxy trust boundary.
+
 ## Nextcloud Operations
 
 Nextcloud runs with dedicated MariaDB and Valkey services on a private Docker

@@ -68,6 +68,8 @@ Create a new `personal-media` IaC repository based on `infra-victus` conventions
 - GitHub Actions reads the Infisical production environment from the fixed
   paths `/global`, `/nextcloud`, `/bitwarden`, and `/infisical`; their folder
   names are a workflow contract, not GitHub variables.
+- NGINX uses Docker service DNS and dynamic addresses on private networks;
+  proxy-aware applications trust only their corresponding private CIDR.
 
 ## Milestones
 

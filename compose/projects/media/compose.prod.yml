@@ -22,7 +22,7 @@ services:
   nextcloud:
     environment:
       APACHE_DISABLE_REWRITE_IP: "1"
-      TRUSTED_PROXIES: ${NEXTCLOUD_TRUSTED_PROXIES:-172.30.0.2}
+      TRUSTED_PROXIES: ${NEXTCLOUD_TRUSTED_PROXIES:-172.30.0.0/24}
       OVERWRITEPROTOCOL: https
       OVERWRITECLIURL: ${NEXTCLOUD_OVERWRITE_CLI_URL:-https://cloud.carlosjg.space}
     volumes:

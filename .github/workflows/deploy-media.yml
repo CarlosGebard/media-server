@@ -146,7 +146,7 @@ jobs:
             printf 'NEXTCLOUD_ADMIN_USER=%s\n' "$(quote_env "admin")"
             printf 'NEXTCLOUD_ADMIN_PASSWORD=%s\n' "$(quote_env "$NEXTCLOUD_ADMIN_PASSWORD")"
             printf 'NEXTCLOUD_TRUSTED_DOMAINS=%s\n' "$(quote_env "cloud.carlosjg.space")"
-            printf 'NEXTCLOUD_TRUSTED_PROXIES=%s\n' "$(quote_env "172.30.0.2")"
+            printf 'NEXTCLOUD_TRUSTED_PROXIES=%s\n' "$(quote_env "172.30.0.0/24")"
             printf 'NEXTCLOUD_OVERWRITE_CLI_URL=%s\n' "$(quote_env "https://cloud.carlosjg.space")"
             printf 'NEXTCLOUD_HTML_DATA_LOCATION=%s\n' "$(quote_env "/srv/data/media/nextcloud/html")"
             printf 'NEXTCLOUD_DB_DATA_LOCATION=%s\n' "$(quote_env "/srv/data/media/nextcloud/mariadb")"

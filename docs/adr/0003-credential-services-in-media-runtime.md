@@ -22,6 +22,10 @@ instance during migration, with offline recovery copies retained outside the
 self-hosted instance. GitHub workflows are manual-only until the OIDC debug
 workflow succeeds.
 
+NGINX resolves upstreams using Docker service DNS and receives dynamically
+assigned addresses on each private network. Bitwarden and Infisical trust only
+their respective private-network CIDRs for forwarded-IP headers.
+
 ## Consequences
 
 - Credential services receive TLS, DNS, and deploy automation consistently.

@@ -185,7 +185,7 @@ services:
       BW_INSTALLATION_ID: ${BITWARDEN_INSTALLATION_ID}
       BW_INSTALLATION_KEY: ${BITWARDEN_INSTALLATION_KEY}
       BW_PORT_HTTP: "8080"
-      BW_REAL_IPS: 172.31.0.2
+      BW_REAL_IPS: 172.31.0.0/24
       globalSettings__disableUserRegistration: ${BITWARDEN_DISABLE_USER_REGISTRATION:-false}
       globalSettings__mail__replyToEmail: ${BITWARDEN_SMTP_FROM_EMAIL:-vault@carlosjg.space}
       globalSettings__mail__smtp__host: smtp.resend.com
@@ -243,7 +243,7 @@ services:
       REDIS_URL: redis://infisical-redis:6379
       SITE_URL: ${INFISICAL_SITE_URL:-https://secrets.carlosjg.space}
       HOST: 0.0.0.0
-      TRUSTED_PROXY_CIDRS: 172.32.0.2/32
+      TRUSTED_PROXY_CIDRS: 172.32.0.0/24
       TELEMETRY_ENABLED: "false"
     networks:
       - infisical_backend
@@ -274,12 +274,9 @@ services:
     networks:
       media_backend: {}
       shared_backend: {}
-      nextcloud_backend:
-        ipv4_address: 172.30.0.2
-      bitwarden_backend:
-        ipv4_address: 172.31.0.2
-      infisical_backend:
-        ipv4_address: 172.32.0.2
+      nextcloud_backend: {}
+      bitwarden_backend: {}
+      infisical_backend: {}
 
 volumes:
   model-cache:

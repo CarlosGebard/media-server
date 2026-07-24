@@ -32,5 +32,5 @@ SMTP is deliberately excluded.
   the shared media certificate to include `cloud.carlosjg.space`.
 - Nextcloud backups must include both the HTML/data tree and a consistent
   MariaDB dump.
-- The static private subnet is a contract: `TRUSTED_PROXIES` must match the
-  fixed NGINX address on the Nextcloud network.
+- The private subnet is a contract: `TRUSTED_PROXIES` is restricted to the
+  Nextcloud network CIDR, while Docker assigns the NGINX address dynamically.
