@@ -144,7 +144,7 @@ services:
     entrypoint: /cron.sh
     depends_on:
       nextcloud:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - nextcloud-html:/var/www/html
     networks:

@@ -95,6 +95,7 @@ Required ownership:
 
 - Immich Postgres data: `999:999`
 - CouchDB data: `5984:5984`
+- Nextcloud HTML/data: `33:33` (`www-data`)
 - Nextcloud MariaDB data: `999:999`
 
 This is required because both containers run as non-root users and must create/read database files inside bind-mounted host directories.
@@ -165,6 +166,10 @@ docker compose --env-file /srv/secrets/runtime/media.env \
   -f compose.yml -f compose.prod.yml exec -T --user www-data nextcloud \
   php occ background:cron
 ```
+
+The cron container starts only after the Nextcloud health check confirms that
+`occ` is installed. This prevents a first-deploy race against the persistent
+HTML directory initialization.
 
 Back up `/srv/data/media/nextcloud/html` and a consistent MariaDB dump before
 upgrading Nextcloud. Restore both together; restoring user files without the

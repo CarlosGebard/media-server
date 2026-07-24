@@ -23,6 +23,9 @@ under `/srv/data/media/nextcloud/mariadb`. GitHub Actions obtains the initial
 admin and database credentials from Infisical, writes the existing runtime env
 file, and Ansible deploys the extended Compose stack.
 
+The persistent HTML directory is owned by `www-data` (`33:33`), and the cron
+service waits for the application health check before starting.
+
 SMTP is deliberately excluded.
 
 ## Consequences

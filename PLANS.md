@@ -70,6 +70,9 @@ Create a new `personal-media` IaC repository based on `infra-victus` conventions
   names are a workflow contract, not GitHub variables.
 - NGINX uses Docker service DNS and dynamic addresses on private networks;
   proxy-aware applications trust only their corresponding private CIDR.
+- Nextcloud persists its HTML tree as `www-data` and starts cron only after the
+  application health check completes, avoiding first-deploy initialization
+  races.
 
 ## Milestones
 
