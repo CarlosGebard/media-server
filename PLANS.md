@@ -245,3 +245,103 @@ Steps:
 Validation: render the local Compose configuration and run `nginx -t` through `./compose/scripts/validate-compose.sh`.
 
 Risks: iOS will still reject HTTP or a self-signed/invalid TLS certificate.
+
+## Follow-up: Nextcloud Setup Warnings
+
+Goal: resolve actionable Nextcloud setup warnings by allowing required outbound
+connectivity, sending the recommended HSTS header, and documenting post-deploy
+`occ` maintenance commands.
+
+Scope:
+
+- Add outbound egress for Nextcloud application and cron containers while
+  leaving MariaDB and Valkey on the private internal network.
+- Add `Strict-Transport-Security` on the Nextcloud HTTPS virtual host.
+- Document server-side `occ` commands for maintenance window, mimetype
+  migrations, default phone region, server ID, and log inspection.
+
+Non-goals:
+
+- No SMTP configuration.
+- No AppAPI deploy daemon configuration.
+- No mandatory two-factor policy changes.
+
+Assumptions:
+
+- `cloud.carlosjg.space` remains the dedicated Nextcloud domain.
+- The production host deploys the checked-in Compose and generated NGINX
+  template through Ansible.
+- The instance is single-node, so `serverid=0` is sufficient to clear the
+  informational warning.
+
+Steps:
+
+1. Add a non-internal Nextcloud egress network only to `nextcloud` and
+   `nextcloud-cron`.
+2. Add HSTS to both checked-in local NGINX config and Ansible production
+   template.
+3. Extend the media deploy runbook with post-deploy Nextcloud remediation
+   commands.
+
+Validation:
+
+```bash
+./compose/scripts/validate-compose.sh
+docker compose --env-file compose/projects/media/.env \
+  -f compose/projects/media/compose.yml \
+  -f compose/projects/media/compose.prod.yml config
+```
+
+Risks:
+
+- Nextcloud will gain outbound internet access; database and cache containers
+  remain isolated.
+- HSTS affects browsers once observed. Do not add `preload` unless all relevant
+  subdomains are permanently HTTPS-ready.
+
+## Follow-up: Bitwarden SMTP Connectivity
+
+Goal: make Bitwarden SMTP delivery work from the Docker deployment while keeping
+the database private.
+
+Scope:
+
+- Add outbound egress for the Bitwarden application container only.
+- Keep `bitwarden-db` isolated on the internal Bitwarden network.
+- Make SMTP host, port, SSL mode, username, password, and from address explicit
+  runtime configuration with Resend-compatible defaults.
+- Update operational documentation for SMTP troubleshooting.
+
+Non-goals:
+
+- No change to Bitwarden database topology.
+- No change to NGINX routing.
+- No committed production SMTP secret values.
+
+Assumptions:
+
+- Resend remains the SMTP provider.
+- The Resend API key is stored as `BITWARDEN_SMTP_PASSWORD`.
+- Port `465` with `globalSettings__mail__smtp__ssl=true` is acceptable for
+  Resend implicit SSL/TLS.
+
+Steps:
+
+1. Attach `bitwarden` to a non-internal egress network.
+2. Parameterize SMTP settings in Compose and env examples.
+3. Document required secrets and post-deploy SMTP checks.
+
+Validation:
+
+```bash
+./compose/scripts/validate-compose.sh
+docker compose --env-file compose/projects/media/.env \
+  -f compose/projects/media/compose.yml \
+  -f compose/projects/media/compose.prod.yml config
+```
+
+Risks:
+
+- Bitwarden gains outbound internet access for SMTP and cloud communication.
+- SMTP failures may still occur if the Resend domain is unverified, the API key
+  lacks send permissions, or the from address does not match a verified sender.

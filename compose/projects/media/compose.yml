@@ -140,6 +140,7 @@ services:
       start_period: 90s
     networks:
       - nextcloud_backend
+      - nextcloud_egress
 
   nextcloud-cron:
     image: nextcloud:${NEXTCLOUD_VERSION:-34-apache}
@@ -153,6 +154,7 @@ services:
       - nextcloud-html:/var/www/html
     networks:
       - nextcloud_backend
+      - nextcloud_egress
 
   bitwarden-db:
     image: mariadb:11.4
@@ -192,15 +194,16 @@ services:
       BW_REAL_IPS: 172.31.0.0/24
       globalSettings__disableUserRegistration: ${BITWARDEN_DISABLE_USER_REGISTRATION:-false}
       globalSettings__mail__replyToEmail: ${BITWARDEN_SMTP_FROM_EMAIL:-vault@carlosjg.space}
-      globalSettings__mail__smtp__host: smtp.resend.com
-      globalSettings__mail__smtp__port: "465"
-      globalSettings__mail__smtp__ssl: "true"
-      globalSettings__mail__smtp__username: resend
+      globalSettings__mail__smtp__host: ${BITWARDEN_SMTP_HOST:-smtp.resend.com}
+      globalSettings__mail__smtp__port: ${BITWARDEN_SMTP_PORT:-465}
+      globalSettings__mail__smtp__ssl: ${BITWARDEN_SMTP_SSL:-true}
+      globalSettings__mail__smtp__username: ${BITWARDEN_SMTP_USERNAME:-resend}
       globalSettings__mail__smtp__password: ${BITWARDEN_SMTP_PASSWORD}
     volumes:
       - bitwarden-data:/etc/bitwarden
     networks:
       - bitwarden_backend
+      - bitwarden_egress
 
   infisical-db:
     image: postgres:16-alpine
@@ -299,12 +302,16 @@ networks:
     ipam:
       config:
         - subnet: 172.30.0.0/24
+  nextcloud_egress:
+    driver: bridge
   bitwarden_backend:
     driver: bridge
     internal: true
     ipam:
       config:
         - subnet: 172.31.0.0/24
+  bitwarden_egress:
+    driver: bridge
   infisical_backend:
     driver: bridge
     internal: true

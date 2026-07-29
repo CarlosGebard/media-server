@@ -38,7 +38,12 @@ Store these in `/bitwarden`:
 - `BITWARDEN_DB_PASSWORD`
 - `BITWARDEN_INSTALLATION_KEY`
 - `BITWARDEN_INSTALLATION_ID`
-- `BITWARDEN_SMTP_PASSWORD`
+- `BITWARDEN_SMTP_PASSWORD` Resend API key used as the SMTP password
+- `BITWARDEN_SMTP_FROM_EMAIL` optional, defaults to `vault@carlosjg.space`
+- `BITWARDEN_SMTP_HOST` optional, defaults to `smtp.resend.com`
+- `BITWARDEN_SMTP_PORT` optional, defaults to `465`
+- `BITWARDEN_SMTP_SSL` optional, defaults to `true`
+- `BITWARDEN_SMTP_USERNAME` optional, defaults to `resend`
 - `BITWARDEN_DISABLE_USER_REGISTRATION` (`false` for the first deploy; change
   to `true` after the initial account exists)
 
@@ -47,8 +52,6 @@ Store these in `/infisical`:
 - `INFISICAL_ENCRYPTION_KEY`
 - `INFISICAL_AUTH_SECRET`
 - `INFISICAL_DB_PASSWORD`
-
-No SMTP variables are part of this deployment.
 
 `COUCHDB_USER` is fixed to `carlos`; `NEXTCLOUD_ADMIN_USER` is fixed to `admin`.
 `IMMICH_DB_PASSWORD` is mapped to Immich's internal `DB_PASSWORD` environment

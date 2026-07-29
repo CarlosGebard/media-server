@@ -157,6 +157,11 @@ Nextcloud runs with dedicated MariaDB and Valkey services on a private Docker
 network. NGINX is the only service connected to both the public media network
 and the Nextcloud network.
 
+The Nextcloud application and cron containers also attach to a dedicated egress
+network so that update checks, app catalog access, federated features, and
+outbound notifications can reach the internet. MariaDB and Valkey remain on the
+internal Nextcloud network only.
+
 Background jobs run through the `nextcloud-cron` container. Confirm the
 scheduler is configured after initial deployment:
 
@@ -165,6 +170,47 @@ cd /srv/apps/media
 docker compose --env-file /srv/secrets/runtime/media.env \
   -f compose.yml -f compose.prod.yml exec -T --user www-data nextcloud \
   php occ background:cron
+```
+
+After deploying Nextcloud configuration changes, clear the common setup
+warnings from the production host:
+
+```bash
+cd /srv/apps/media
+
+docker compose --env-file /srv/secrets/runtime/media.env \
+  -f compose.yml -f compose.prod.yml exec -T --user www-data nextcloud \
+  php occ config:system:set maintenance_window_start --type=integer --value=7
+
+docker compose --env-file /srv/secrets/runtime/media.env \
+  -f compose.yml -f compose.prod.yml exec -T --user www-data nextcloud \
+  php occ config:system:set default_phone_region --value=CL
+
+docker compose --env-file /srv/secrets/runtime/media.env \
+  -f compose.yml -f compose.prod.yml exec -T --user www-data nextcloud \
+  php occ config:system:set serverid --type=integer --value=0
+```
+
+Run the expensive mimetype repair in a low-usage window after confirming recent
+backups for `/srv/data/media/nextcloud/html` and MariaDB:
+
+```bash
+cd /srv/apps/media
+
+docker compose --env-file /srv/secrets/runtime/media.env \
+  -f compose.yml -f compose.prod.yml exec -T --user www-data nextcloud \
+  php occ maintenance:repair --include-expensive
+```
+
+Inspect the actual Nextcloud log errors before changing AppAPI, SMTP, or 2FA
+policy:
+
+```bash
+cd /srv/apps/media
+
+docker compose --env-file /srv/secrets/runtime/media.env \
+  -f compose.yml -f compose.prod.yml exec -T --user www-data nextcloud \
+  php occ log:tail
 ```
 
 The cron container starts only after the Nextcloud health check confirms that
@@ -187,6 +233,31 @@ After the first Bitwarden deployment, create the initial account at
 `BITWARDEN_DISABLE_USER_REGISTRATION` to `true` in the runtime configuration
 before the next manual deploy. Bitwarden sends mail through the configured
 Resend SMTP relay.
+
+Bitwarden uses a private internal network for MariaDB and a dedicated egress
+network for outbound SMTP. Keep `bitwarden-db` off the egress network.
+
+Default SMTP values are Resend-compatible:
+
+```text
+BITWARDEN_SMTP_HOST=smtp.resend.com
+BITWARDEN_SMTP_PORT=465
+BITWARDEN_SMTP_SSL=true
+BITWARDEN_SMTP_USERNAME=resend
+BITWARDEN_SMTP_PASSWORD=<Resend API key>
+BITWARDEN_SMTP_FROM_EMAIL=vault@carlosjg.space
+```
+
+If mail fails, verify that the Resend API key is active, the sender domain is
+verified, and the from address belongs to that verified domain. Then inspect the
+Bitwarden logs from the production host:
+
+```bash
+cd /srv/apps/media
+
+docker compose --env-file /srv/secrets/runtime/media.env \
+  -f compose.yml -f compose.prod.yml logs --tail=200 bitwarden
+```
 
 Before first Infisical deployment, save offline copies of
 `INFISICAL_ENCRYPTION_KEY` and `INFISICAL_AUTH_SECRET`. Create the first
