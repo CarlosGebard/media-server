@@ -48,5 +48,5 @@ services:
     volumes:
       - ${MEDIA_APP_ROOT:-/srv/apps/media}/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ${MEDIA_APP_ROOT:-/srv/apps/media}/nginx/conf.d:/etc/nginx/conf.d:ro
-      - ${PRIVATE_TLS_CERT_PATH:-/srv/secrets/tls/home.carlosjg.space/fullchain.pem}:/etc/nginx/private-tls/fullchain.pem:ro
-      - ${PRIVATE_TLS_KEY_PATH:-/srv/secrets/tls/home.carlosjg.space/privkey.pem}:/etc/nginx/private-tls/privkey.pem:ro
+      - ${PRIVATE_TLS_CERT_PATH:-/srv/secrets/tls/home.carlosjg/fullchain.pem}:/etc/nginx/private-tls/fullchain.pem:ro
+      - ${PRIVATE_TLS_KEY_PATH:-/srv/secrets/tls/home.carlosjg/privkey.pem}:/etc/nginx/private-tls/privkey.pem:ro

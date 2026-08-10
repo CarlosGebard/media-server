@@ -349,7 +349,7 @@ Risks:
 ## Follow-up: Private Raspberry Pi Deployment
 
 Goal: deploy the media stack privately on a Raspberry Pi through Tailscale,
-using `*.home.carlosjg.space` without router, public DNS, or public ingress.
+using `*.home.carlosjg` without router, public DNS, or public ingress.
 
 Scope:
 
@@ -374,10 +374,10 @@ Assumptions:
 
 - Tailscale is already connected on the Raspberry Pi and the GitHub Actions
   runner can run privileged Ansible tasks locally.
-- A private CA certificate and key for `*.home.carlosjg.space` will be supplied
+- A private CA certificate and key for `*.home.carlosjg` will be supplied
   at the documented secret paths and its root certificate trusted by clients.
 - Tailscale Split DNS is configured manually in the tailnet admin console to
-  send `home.carlosjg.space` queries to the Raspberry Pi Tailscale IPv4 address.
+  send `home.carlosjg` queries to the Raspberry Pi Tailscale IPv4 address.
 
 Steps:
 

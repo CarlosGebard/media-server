@@ -13,14 +13,14 @@ dedicated `Deploy Media to Raspberry Pi` workflow for this host only.
    Its service account needs passwordless sudo for the Ansible tasks.
 2. Join the Raspberry Pi to the tailnet and record `tailscale ip -4`.
 3. In the Tailscale DNS admin settings, add a Split DNS nameserver for
-   `home.carlosjg.space` pointing to that Tailscale IPv4 address. Do not add
+   `home.carlosjg` pointing to that Tailscale IPv4 address. Do not add
    public DNS records for this private suffix.
 4. Create a private CA offline, issue a wildcard certificate for
-   `*.home.carlosjg.space`, and copy only the issued certificate and key to:
+   `*.home.carlosjg`, and copy only the issued certificate and key to:
 
    ```text
-   /srv/secrets/tls/home.carlosjg.space/fullchain.pem
-   /srv/secrets/tls/home.carlosjg.space/privkey.pem
+   /srv/secrets/tls/home.carlosjg/fullchain.pem
+   /srv/secrets/tls/home.carlosjg/privkey.pem
    ```
 
    Use mode `0600` for the key. Install the CA root certificate on every
@@ -41,10 +41,10 @@ against the local Raspberry Pi inventory.
 The private names are:
 
 ```text
-immich.home.carlosjg.space
-couchdb.home.carlosjg.space
-cloud.home.carlosjg.space
-vault.home.carlosjg.space
+immich.home.carlosjg
+couchdb.home.carlosjg
+cloud.home.carlosjg
+vault.home.carlosjg
 ```
 
 ## Validate
@@ -52,8 +52,8 @@ vault.home.carlosjg.space
 On a Tailscale client:
 
 ```bash
-dig @<raspberry-tailscale-ip> immich.home.carlosjg.space
-curl --cacert private-ca-root.pem https://immich.home.carlosjg.space/healthz
+dig @<raspberry-tailscale-ip> immich.home.carlosjg
+curl --cacert private-ca-root.pem https://immich.home.carlosjg/healthz
 ```
 
 On the Raspberry Pi:
@@ -67,7 +67,7 @@ docker compose --env-file /srv/secrets/runtime/media.env \
 
 ## Recovery and Rollback
 
-If Split DNS is misconfigured, remove the `home.carlosjg.space` Split DNS rule
+If Split DNS is misconfigured, remove the `home.carlosjg` Split DNS rule
 in Tailscale; this changes name resolution only. To stop the private stack,
 run `docker compose down` with the two Raspberry Compose files. The public
 deployment and its workflow are independent and remain unchanged.

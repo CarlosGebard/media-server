@@ -56,7 +56,7 @@ Production edge:
 ## Private Raspberry Pi
 
 The Raspberry Pi deployment is private and separate from the public production
-edge. It uses Tailscale, dnsmasq Split DNS for `home.carlosjg.space`, and a
+edge. It uses Tailscale, dnsmasq Split DNS for `home.carlosjg`, and a
 private CA; it does not open router ports or publish DNS records. Run it through
 the `Deploy Media to Raspberry Pi` workflow. See
 [`docs/runbooks/media-raspberry-private.md`](docs/runbooks/media-raspberry-private.md).

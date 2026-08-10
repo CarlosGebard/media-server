@@ -14,7 +14,7 @@ private hostnames for media services from both LAN and remote networks.
 
 Deploy the media runtime to the Raspberry Pi with a dedicated Compose overlay.
 Tailscale provides transport and access control. Host-level dnsmasq resolves
-`*.home.carlosjg.space` to the Raspberry Pi Tailscale IPv4 address, and the
+`*.home.carlosjg` to the Raspberry Pi Tailscale IPv4 address, and the
 tailnet uses Split DNS for that suffix. NGINX binds only to that Tailscale
 address and routes each hostname to its Docker service.
 
