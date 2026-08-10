@@ -68,10 +68,24 @@ jobs:
       - name: Assert Raspberry deployment prerequisites
         run: |
           set -euo pipefail
-          command -v ansible-playbook >/dev/null
-          command -v docker >/dev/null
-          command -v tailscale >/dev/null
-          test -n "$(tailscale ip -4)"
+          missing=()
+          for command in ansible-playbook docker tailscale; do
+            if ! command -v "$command" >/dev/null 2>&1; then
+              missing+=("$command")
+            fi
+          done
+          if [[ ${#missing[@]} -gt 0 ]]; then
+            printf 'Missing required commands: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+          tailscale_ip="$(tailscale ip -4)"
+          if [[ -z "$tailscale_ip" ]]; then
+            echo 'Tailscale is installed but has no IPv4 address.' >&2
+            tailscale status >&2 || true
+            exit 1
+          fi
+          docker info >/dev/null
+          printf 'Prerequisites OK. Tailscale IPv4: %s\n' "$tailscale_ip"
 
       - name: Materialize Raspberry media runtime env
         env:
