@@ -39,12 +39,10 @@ init:
 
 	mkdir -p compose/.tmp/media/bitwarden/mariadb
 
-	mkdir -p compose/.tmp/media/infisical/postgres
 	chown 999:999 compose/.tmp/media/immich/postgres 2>/dev/null || chmod 0777 compose/.tmp/media/immich/postgres 2>/dev/null || true
 	chown 5984:5984 compose/.tmp/media/couchdb/data 2>/dev/null || chmod 0777 compose/.tmp/media/couchdb/data 2>/dev/null || true
 	chown 999:999 compose/.tmp/media/nextcloud/mariadb 2>/dev/null || chmod 0777 compose/.tmp/media/nextcloud/mariadb 2>/dev/null || true
 	chown 999:999 compose/.tmp/media/bitwarden/mariadb 2>/dev/null || chmod 0777 compose/.tmp/media/bitwarden/mariadb 2>/dev/null || true
-	chown 999:999 compose/.tmp/media/infisical/postgres 2>/dev/null || chmod 0777 compose/.tmp/media/infisical/postgres 2>/dev/null || true
 	docker network inspect $(NETWORK) >/dev/null 2>&1 || docker network create $(NETWORK)
 
 validate: init

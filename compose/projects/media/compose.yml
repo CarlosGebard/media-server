@@ -6,7 +6,7 @@ services:
     env_file:
       - .env
     environment:
-      # Keep the Infisical secret name explicit while satisfying Immich's
+      # Keep the external secret name explicit while satisfying Immich's
       # runtime contract, which requires DB_PASSWORD inside the container.
       DB_PASSWORD: ${IMMICH_DB_PASSWORD}
     depends_on:
@@ -205,56 +205,6 @@ services:
       - bitwarden_backend
       - bitwarden_egress
 
-  infisical-db:
-    image: postgres:16-alpine
-    container_name: infisical_postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: infisical
-      POSTGRES_PASSWORD: ${INFISICAL_DB_PASSWORD}
-      POSTGRES_DB: infisical
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready --username=infisical --dbname=infisical"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    networks:
-      - infisical_backend
-
-  infisical-redis:
-    image: redis:7-alpine
-    container_name: infisical_redis
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-    networks:
-      - infisical_backend
-
-  infisical:
-    image: infisical/infisical:${INFISICAL_VERSION:-v0.160.7}
-    container_name: infisical
-    restart: unless-stopped
-    depends_on:
-      infisical-db:
-        condition: service_healthy
-      infisical-redis:
-        condition: service_healthy
-    environment:
-      NODE_ENV: production
-      ENCRYPTION_KEY: ${INFISICAL_ENCRYPTION_KEY}
-      AUTH_SECRET: ${INFISICAL_AUTH_SECRET}
-      DB_CONNECTION_URI: "postgres://infisical:${INFISICAL_DB_PASSWORD}@infisical-db:5432/infisical"
-      REDIS_URL: redis://infisical-redis:6379
-      SITE_URL: ${INFISICAL_SITE_URL:-https://secrets.carlosjg.space}
-      HOST: 0.0.0.0
-      TRUSTED_PROXY_CIDRS: 172.32.0.0/24
-      TELEMETRY_ENABLED: "false"
-    networks:
-      - infisical_backend
-
   nginx:
     image: nginx:1.28.3-alpine
     container_name: media_nginx
@@ -267,8 +217,6 @@ services:
       nextcloud:
         condition: service_started
       bitwarden:
-        condition: service_started
-      infisical:
         condition: service_started
     volumes:
       - ../../configs/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
@@ -283,7 +231,6 @@ services:
       shared_backend: {}
       nextcloud_backend: {}
       bitwarden_backend: {}
-      infisical_backend: {}
 
 volumes:
   model-cache:
@@ -312,9 +259,3 @@ networks:
         - subnet: 172.31.0.0/24
   bitwarden_egress:
     driver: bridge
-  infisical_backend:
-    driver: bridge
-    internal: true
-    ipam:
-      config:
-        - subnet: 172.32.0.0/24

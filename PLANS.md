@@ -66,7 +66,7 @@ Create a new `personal-media` IaC repository based on `infra-victus` conventions
 - CouchDB credentials are provided by env, not committed as production secrets.
 - Immich upstream Compose remains reference for service topology.
 - GitHub Actions reads the Infisical production environment from the fixed
-  paths `/global`, `/nextcloud`, `/bitwarden`, and `/infisical`; their folder
+  paths `/global`, `/nextcloud`, and `/bitwarden`; their folder
   names are a workflow contract, not GitHub variables.
 - NGINX uses Docker service DNS and dynamic addresses on private networks;
   proxy-aware applications trust only their corresponding private CIDR.
@@ -345,3 +345,65 @@ Risks:
 - Bitwarden gains outbound internet access for SMTP and cloud communication.
 - SMTP failures may still occur if the Resend domain is unverified, the API key
   lacks send permissions, or the from address does not match a verified sender.
+
+## Follow-up: Private Raspberry Pi Deployment
+
+Goal: deploy the media stack privately on a Raspberry Pi through Tailscale,
+using `*.home.carlosjg.space` without router, public DNS, or public ingress.
+
+Scope:
+
+- Remove the self-hosted Infisical service and its data dependencies while
+  retaining Infisical OIDC credential retrieval in GitHub Actions.
+- Preserve the existing public-server deployment workflow.
+- Add a manual, self-hosted-runner workflow and inventory for the Raspberry Pi.
+- Install and configure host-level dnsmasq to authoritatively resolve the
+  private domain to the Raspberry Pi Tailscale IPv4 address.
+- Add a Raspberry Compose overlay and private TLS NGINX routing.
+- Document Tailscale Split DNS, private CA trust, bootstrap, validation, and
+  rollback.
+
+Non-goals:
+
+- No router, port-forward, public DNS, public ACME, Cloudflare, or Namecheap
+  API changes.
+- No migration of the existing public workloads to the Raspberry Pi.
+- No automated installation of the Tailscale client or changes to tailnet ACLs.
+
+Assumptions:
+
+- Tailscale is already connected on the Raspberry Pi and the GitHub Actions
+  runner can run privileged Ansible tasks locally.
+- A private CA certificate and key for `*.home.carlosjg.space` will be supplied
+  at the documented secret paths and its root certificate trusted by clients.
+- Tailscale Split DNS is configured manually in the tailnet admin console to
+  send `home.carlosjg.space` queries to the Raspberry Pi Tailscale IPv4 address.
+
+Steps:
+
+1. Remove the local Infisical runtime, secret contract entries, routes, and
+   validation hooks without changing OIDC-based secret retrieval.
+2. Add the private Compose, inventory, dnsmasq, and NGINX definitions.
+3. Add the Raspberry-only manual deployment workflow and render a runtime env
+   bound to the discovered Tailscale IPv4 address.
+4. Write ADR and runbook documentation for the private access contract and
+   bootstrap sequence.
+5. Render Compose, validate NGINX, and run Ansible syntax checks.
+
+Validation:
+
+```bash
+./compose/scripts/validate-compose.sh
+docker compose --env-file compose/projects/media/.env \
+  -f compose/projects/media/compose.yml \
+  -f compose/projects/media/compose.raspberry.yml config
+./tests/ansible/check.sh
+```
+
+Risks:
+
+- A private CA is trusted only on enrolled client devices.
+- Split DNS is an external tailnet configuration step; without it, the private
+  hostnames do not resolve.
+- The Raspberry must have sufficient ARM64-compatible resources for the chosen
+  media workloads.

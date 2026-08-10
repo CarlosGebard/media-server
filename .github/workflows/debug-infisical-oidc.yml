@@ -51,15 +51,5 @@ jobs:
           env-slug: ${{ vars.INFISICAL_ENV_SLUG }}
           secret-path: /bitwarden
 
-      - name: Authenticate and fetch Infisical probe path
-        uses: Infisical/secrets-action@v1.0.10
-        with:
-          method: oidc
-          domain: ${{ vars.INFISICAL_API_URL }}
-          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
-          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
-          env-slug: ${{ vars.INFISICAL_ENV_SLUG }}
-          secret-path: /infisical
-
       - name: Report success without exposing secrets
         run: echo "Infisical OIDC authentication and secret-path access succeeded."

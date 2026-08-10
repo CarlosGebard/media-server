@@ -7,7 +7,7 @@
   pre_tasks:
     - name: Load inventory group vars fragments
       ansible.builtin.include_vars:
-        dir: "{{ playbook_dir }}/../inventories/production/group_vars"
+        dir: "{{ inventory_dir }}/group_vars"
         extensions:
           - yml
 
@@ -16,4 +16,3 @@
 
   roles:
     - role: deploy/media
-

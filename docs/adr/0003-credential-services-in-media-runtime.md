@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted.
+Superseded by [ADR 0004](0004-private-raspberry-media-access.md) for the
+Infisical runtime portion. Bitwarden remains part of the public media runtime.
 
 ## Context
 

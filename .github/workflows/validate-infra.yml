@@ -26,7 +26,7 @@ env:
 
 jobs:
   validate:
-    name: Validate Ansible, Compose, and Infisical
+    name: Validate Ansible and Compose
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
@@ -74,16 +74,6 @@ jobs:
           env-slug: ${{ vars.INFISICAL_ENV_SLUG }}
           secret-path: /bitwarden
 
-      - name: Pull Infisical runtime secrets via OIDC
-        uses: Infisical/secrets-action@v1.0.10
-        with:
-          method: oidc
-          domain: ${{ vars.INFISICAL_API_URL }}
-          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
-          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
-          env-slug: ${{ vars.INFISICAL_ENV_SLUG }}
-          secret-path: /infisical
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -104,7 +94,7 @@ jobs:
             -f compose/projects/media/compose.prod.yml \
             config >/dev/null
 
-      - name: Assert Infisical secret contract
+      - name: Assert production secret contract
         env:
           PROD_HOST: ${{ env.PROD_HOST }}
           PROD_SSH_PRIVATE_KEY: ${{ env.PROD_SSH_PRIVATE_KEY }}
@@ -116,9 +106,6 @@ jobs:
           BITWARDEN_DB_PASSWORD: ${{ env.BITWARDEN_DB_PASSWORD }}
           BITWARDEN_INSTALLATION_KEY: ${{ env.BITWARDEN_INSTALLATION_KEY }}
           BITWARDEN_SMTP_PASSWORD: ${{ env.BITWARDEN_SMTP_PASSWORD }}
-          INFISICAL_ENCRYPTION_KEY: ${{ env.INFISICAL_ENCRYPTION_KEY }}
-          INFISICAL_AUTH_SECRET: ${{ env.INFISICAL_AUTH_SECRET }}
-          INFISICAL_DB_PASSWORD: ${{ env.INFISICAL_DB_PASSWORD }}
           BITWARDEN_INSTALLATION_ID: ${{ env.BITWARDEN_INSTALLATION_ID }}
         run: |
           set -euo pipefail
@@ -133,9 +120,6 @@ jobs:
           [[ -n "${BITWARDEN_DB_PASSWORD}" ]] || errors+=("Missing BITWARDEN_DB_PASSWORD")
           [[ -n "${BITWARDEN_INSTALLATION_KEY}" ]] || errors+=("Missing BITWARDEN_INSTALLATION_KEY")
           [[ -n "${BITWARDEN_SMTP_PASSWORD}" ]] || errors+=("Missing BITWARDEN_SMTP_PASSWORD")
-          [[ -n "${INFISICAL_ENCRYPTION_KEY}" ]] || errors+=("Missing INFISICAL_ENCRYPTION_KEY")
-          [[ -n "${INFISICAL_AUTH_SECRET}" ]] || errors+=("Missing INFISICAL_AUTH_SECRET")
-          [[ -n "${INFISICAL_DB_PASSWORD}" ]] || errors+=("Missing INFISICAL_DB_PASSWORD")
           [[ -n "${BITWARDEN_INSTALLATION_ID}" ]] || errors+=("Missing BITWARDEN_INSTALLATION_ID")
           if [[ ${#errors[@]} -gt 0 ]]; then
             printf '%s\n' "${errors[@]}" >&2

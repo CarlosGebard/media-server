@@ -50,7 +50,6 @@ validate_nginx() {
 		--add-host couchdb:127.0.0.1 \
 		--add-host nextcloud:127.0.0.1 \
 		--add-host bitwarden:127.0.0.1 \
-		--add-host infisical:127.0.0.1 \
 		-v "$nginx_conf:/etc/nginx/nginx.conf:ro" \
 		-v "$nginx_conf_dir:/etc/nginx/conf.d:ro" \
 		nginx:1.28.3-alpine nginx -t
@@ -65,7 +64,6 @@ validate_required_dirs() {
 		"$ROOT_DIR/compose/.tmp/media/nextcloud/mariadb"
 		"$ROOT_DIR/compose/.tmp/media/bitwarden/data"
 		"$ROOT_DIR/compose/.tmp/media/bitwarden/mariadb"
-		"$ROOT_DIR/compose/.tmp/media/infisical/postgres"
 	)
 
 	for dir in "${dirs[@]}"; do

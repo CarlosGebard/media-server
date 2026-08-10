@@ -1,0 +1,7 @@
+# Managed by Ansible. This resolver is authoritative only for the private media
+# zone and is reachable solely at the Raspberry Pi Tailscale address.
+listen-address={{ media_tailscale_ipv4 }}
+bind-interfaces
+domain-needed
+bogus-priv
+address=/{{ media_private_domain }}/{{ media_tailscale_ipv4 }}

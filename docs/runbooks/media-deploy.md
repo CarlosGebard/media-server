@@ -54,9 +54,6 @@ Required Infisical secrets:
 - `BITWARDEN_INSTALLATION_KEY`
 - `BITWARDEN_SMTP_PASSWORD`
 - `BITWARDEN_DISABLE_USER_REGISTRATION`
-- `INFISICAL_ENCRYPTION_KEY`
-- `INFISICAL_AUTH_SECRET`
-- `INFISICAL_DB_PASSWORD`
 
 Optional Infisical secrets:
 
@@ -79,6 +76,11 @@ Rules:
   requests one certificate for all media public domains, so a missing record
   prevents certificate issuance.
 - Do not commit production values.
+
+The deploy removes the retired `infisical`, `infisical_postgres`, and
+`infisical_redis` containers. It deliberately preserves the former PostgreSQL
+directory at `/srv/data/media/infisical/postgres`; archive it before deleting it
+manually after recovery is no longer needed.
 
 ## Production Permissions
 
@@ -221,9 +223,9 @@ Back up `/srv/data/media/nextcloud/html` and a consistent MariaDB dump before
 upgrading Nextcloud. Restore both together; restoring user files without the
 database, or vice versa, leaves file metadata inconsistent.
 
-## Bitwarden and Infisical Setup
+## Bitwarden Setup
 
-Create DNS records for `vault.carlosjg.space` and `secrets.carlosjg.space`
+Create a DNS record for `vault.carlosjg.space`
 before the manual deploy, otherwise the shared Certbot certificate cannot be
 issued. Run the `Debug Infisical OIDC` workflow first; deploy remains manual
 until it reports success.
@@ -258,12 +260,6 @@ cd /srv/apps/media
 docker compose --env-file /srv/secrets/runtime/media.env \
   -f compose.yml -f compose.prod.yml logs --tail=200 bitwarden
 ```
-
-Before first Infisical deployment, save offline copies of
-`INFISICAL_ENCRYPTION_KEY` and `INFISICAL_AUTH_SECRET`. Create the first
-Infisical user at `https://secrets.carlosjg.space`; that user becomes the
-instance administrator. Do not delete its PostgreSQL data without a tested
-backup and those recovery keys.
 
 ## Extracted Wiki.js
 
