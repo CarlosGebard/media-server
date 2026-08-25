@@ -7,6 +7,19 @@ on:
         description: Git ref to deploy
         required: true
         default: main
+      storage_policy:
+        description: Storage required behind /srv
+        required: true
+        type: choice
+        default: require-external
+        options:
+          - require-external
+          - prefer-external
+          - system-disk
+      minimum_free_gb:
+        description: Minimum free space required on /srv in GiB
+        required: true
+        default: "20"
 
 concurrency:
   group: personal-media-raspberry-deploy
@@ -17,7 +30,7 @@ env:
 
 jobs:
   deploy:
-    name: Deploy private media stack
+    name: Deploy Raspberry media stack through Tailscale Serve
     runs-on: [self-hosted, linux, arm64, media]
     timeout-minutes: 30
     environment: production
@@ -34,6 +47,72 @@ jobs:
         uses: actions/checkout@v5
         with:
           ref: ${{ env.DEPLOY_GIT_REF }}
+
+      - name: Validate Raspberry storage
+        env:
+          STORAGE_POLICY: ${{ inputs.storage_policy }}
+          MINIMUM_FREE_GB: ${{ inputs.minimum_free_gb }}
+        run: |
+          set -euo pipefail
+          case "$STORAGE_POLICY" in
+            require-external|prefer-external|system-disk) ;;
+            *) echo "Unsupported storage policy: $STORAGE_POLICY" >&2; exit 1 ;;
+          esac
+          if [[ ! "$MINIMUM_FREE_GB" =~ ^[0-9]+$ ]]; then
+            echo 'minimum_free_gb must be a non-negative integer.' >&2
+            exit 1
+          fi
+          for command in df findmnt sudo; do
+            command -v "$command" >/dev/null 2>&1 || {
+              echo "Missing required storage command: $command" >&2
+              exit 1
+            }
+          done
+          sudo -n true || {
+            echo 'The runner requires passwordless sudo for storage validation.' >&2
+            exit 1
+          }
+          sudo -n install -d -m 0755 /srv
+          sudo -n test -w /srv || {
+            echo '/srv is not writable by root.' >&2
+            exit 1
+          }
+
+          root_device="$(findmnt -n -o MAJ:MIN -T /)"
+          srv_device="$(findmnt -n -o MAJ:MIN -T /srv)"
+          srv_source="$(findmnt -n -o SOURCE -T /srv)"
+          srv_filesystem="$(findmnt -n -o FSTYPE -T /srv)"
+          free_gb="$(df -Pk /srv | awk 'NR == 2 { print int($4 / 1024 / 1024) }')"
+
+          storage_kind=system
+          if [[ "$srv_device" != "$root_device" ]]; then
+            storage_kind=external
+          fi
+
+          if [[ "$STORAGE_POLICY" == require-external && "$storage_kind" != external ]]; then
+            echo "Deployment stopped: /srv uses the system filesystem ($srv_source)." >&2
+            echo 'Mount the external SSD at /srv or select a different storage policy.' >&2
+            exit 1
+          fi
+          if (( free_gb < MINIMUM_FREE_GB )); then
+            echo "Deployment stopped: /srv has ${free_gb} GiB free; ${MINIMUM_FREE_GB} GiB required." >&2
+            exit 1
+          fi
+          if [[ "$STORAGE_POLICY" == prefer-external && "$storage_kind" == system ]]; then
+            echo 'Warning: no separate filesystem is mounted behind /srv; using the system disk.' >&2
+          fi
+
+          printf 'Storage OK: kind=%s source=%s filesystem=%s free=%sGiB policy=%s\n' \
+            "$storage_kind" "$srv_source" "$srv_filesystem" "$free_gb" "$STORAGE_POLICY"
+          {
+            echo '### Raspberry storage'
+            echo
+            echo "- Policy: \`$STORAGE_POLICY\`"
+            echo "- Storage: \`$storage_kind\`"
+            echo "- Source: \`$srv_source\`"
+            echo "- Filesystem: \`$srv_filesystem\`"
+            echo "- Free space: \`${free_gb} GiB\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Pull global deployment secrets from Infisical via OIDC
         uses: Infisical/secrets-action@v1.0.10
@@ -111,7 +190,6 @@ jobs:
           : "${BITWARDEN_INSTALLATION_ID:?Missing BITWARDEN_INSTALLATION_ID}"
           : "${BITWARDEN_INSTALLATION_KEY:?Missing BITWARDEN_INSTALLATION_KEY}"
           : "${BITWARDEN_SMTP_PASSWORD:?Missing BITWARDEN_SMTP_PASSWORD}"
-          tailscale_ip="$(tailscale ip -4)"
           quote_env() { local value="$1"; value="${value//\'/\\\'}"; printf "'%s'" "$value"; }
           {
             printf 'IMMICH_VERSION=%s\n' "$(quote_env "${IMMICH_VERSION:-v2}")"
@@ -123,6 +201,7 @@ jobs:
             printf 'COUCHDB_USER=%s\n' "$(quote_env carlos)"
             printf 'COUCHDB_PASSWORD=%s\n' "$(quote_env "$COUCHDB_PASSWORD")"
             printf 'COUCHDB_DATA_LOCATION=%s\n' "$(quote_env '/srv/data/media/couchdb/data')"
+            printf 'COUCHDB_HTTP_PORT=%s\n' "$(quote_env '5984')"
             printf 'NEXTCLOUD_VERSION=%s\n' "$(quote_env "${NEXTCLOUD_VERSION:-34-apache}")"
             printf 'NEXTCLOUD_DB_NAME=%s\n' "$(quote_env nextcloud)"
             printf 'NEXTCLOUD_DB_USER=%s\n' "$(quote_env nextcloud)"
@@ -130,13 +209,14 @@ jobs:
             printf 'NEXTCLOUD_DB_ROOT_PASSWORD=%s\n' "$(quote_env "$NEXTCLOUD_DB_ROOT_PASSWORD")"
             printf 'NEXTCLOUD_ADMIN_USER=%s\n' "$(quote_env admin)"
             printf 'NEXTCLOUD_ADMIN_PASSWORD=%s\n' "$(quote_env "$NEXTCLOUD_ADMIN_PASSWORD")"
-            printf 'NEXTCLOUD_TRUSTED_DOMAINS=%s\n' "$(quote_env 'cloud.home.carlosjg')"
+            printf 'NEXTCLOUD_TRUSTED_DOMAINS=%s\n' "$(quote_env 'raspberry-media-server.tail116b62.ts.net:8445')"
             printf 'NEXTCLOUD_TRUSTED_PROXIES=%s\n' "$(quote_env '172.30.0.0/24')"
-            printf 'NEXTCLOUD_OVERWRITE_CLI_URL=%s\n' "$(quote_env 'https://cloud.home.carlosjg')"
+            printf 'NEXTCLOUD_OVERWRITE_CLI_URL=%s\n' "$(quote_env 'https://raspberry-media-server.tail116b62.ts.net:8445')"
             printf 'NEXTCLOUD_HTML_DATA_LOCATION=%s\n' "$(quote_env '/srv/data/media/nextcloud/html')"
             printf 'NEXTCLOUD_DB_DATA_LOCATION=%s\n' "$(quote_env '/srv/data/media/nextcloud/mariadb')"
+            printf 'NEXTCLOUD_HTTP_PORT=%s\n' "$(quote_env '8081')"
             printf 'BITWARDEN_VERSION=%s\n' "$(quote_env latest)"
-            printf 'BITWARDEN_DOMAIN=%s\n' "$(quote_env 'vault.home.carlosjg')"
+            printf 'BITWARDEN_DOMAIN=%s\n' "$(quote_env 'raspberry-media-server.tail116b62.ts.net:8446')"
             printf 'BITWARDEN_DB_PASSWORD=%s\n' "$(quote_env "$BITWARDEN_DB_PASSWORD")"
             printf 'BITWARDEN_INSTALLATION_ID=%s\n' "$(quote_env "$BITWARDEN_INSTALLATION_ID")"
             printf 'BITWARDEN_INSTALLATION_KEY=%s\n' "$(quote_env "$BITWARDEN_INSTALLATION_KEY")"
@@ -144,15 +224,13 @@ jobs:
             printf 'BITWARDEN_DISABLE_USER_REGISTRATION=%s\n' "$(quote_env "${BITWARDEN_DISABLE_USER_REGISTRATION:-false}")"
             printf 'BITWARDEN_DB_DATA_LOCATION=%s\n' "$(quote_env '/srv/data/media/bitwarden/mariadb')"
             printf 'BITWARDEN_DATA_LOCATION=%s\n' "$(quote_env '/srv/data/media/bitwarden/data')"
-            printf 'TAILSCALE_BIND_IP=%s\n' "$(quote_env "$tailscale_ip")"
-            printf 'PRIVATE_TLS_CERT_PATH=%s\n' "$(quote_env '/srv/secrets/tls/home.carlosjg/fullchain.pem')"
-            printf 'PRIVATE_TLS_KEY_PATH=%s\n' "$(quote_env '/srv/secrets/tls/home.carlosjg/privkey.pem')"
+            printf 'BITWARDEN_HTTP_PORT=%s\n' "$(quote_env '8082')"
             printf 'MEDIA_APP_ROOT=%s\n' "$(quote_env '/srv/apps/media')"
             printf 'TZ=%s\n' "$(quote_env 'America/Santiago')"
           } > /tmp/media-raspberry-runtime.env
           chmod 600 /tmp/media-raspberry-runtime.env
 
-      - name: Deploy private media stack
+      - name: Deploy Raspberry media stack
         env:
           MEDIA_RUNTIME_ENV_SOURCE_FILE: /tmp/media-raspberry-runtime.env
         run: |

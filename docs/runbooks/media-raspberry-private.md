@@ -1,73 +1,81 @@
-# Private Raspberry Pi Media Runbook
+# Raspberry Pi Media through Tailscale Serve
 
 ## Scope
 
-This deployment is private: it does not use router configuration, public DNS,
-or public ingress. It coexists with the public media deployment; use the
-dedicated `Deploy Media to Raspberry Pi` workflow for this host only.
+This deployment is private to the tailnet. It uses its own Compose overlay,
+Ansible inventory, and `Deploy Media to Raspberry Pi` action. The public Ubuntu
+action and its NGINX/Certbot configuration are not changed by this flow.
 
-## One-time Bootstrap
+## One-time bootstrap
 
 1. Install Docker, Docker Compose, Ansible, Tailscale, and the GitHub Actions
-   runner on the Raspberry Pi. Add runner labels `linux`, `arm64`, and `media`.
-   Its service account needs passwordless sudo for the Ansible tasks.
-2. Join the Raspberry Pi to the tailnet and record `tailscale ip -4`.
-3. In the Tailscale DNS admin settings, add a Split DNS nameserver for
-   `home.carlosjg` pointing to that Tailscale IPv4 address. Do not add
-   public DNS records for this private suffix.
-4. Create a private CA offline, issue a wildcard certificate for
-   `*.home.carlosjg`, and copy only the issued certificate and key to:
+   runner on the Raspberry Pi. Give the runner the labels `linux`, `arm64`, and
+   `media`; its service account needs passwordless sudo for the deploy playbook.
+2. Join the host to the tailnet and enable HTTPS in the Tailscale admin console
+   if it is not already enabled.
+3. Confirm `tailscale status` and `tailscale serve status` work as root.
+4. Keep persistent application data mounted below `/srv/data/media` on the SSD.
 
-   ```text
-   /srv/secrets/tls/home.carlosjg/fullchain.pem
-   /srv/secrets/tls/home.carlosjg/privkey.pem
-   ```
-
-   Use mode `0600` for the key. Install the CA root certificate on every
-   client device that will use the services.
-5. Ensure the Tailscale ACL permits intended clients to reach the Raspberry Pi
-   on TCP `443` and UDP/TCP `53`. Keep SSH restricted separately.
-
-   The deploy adds equivalent UFW allow rules on `tailscale0` when UFW is
-   available; it does not add LAN or public-interface rules.
+No public DNS, router port forwarding, private CA, split DNS, or dnsmasq setup
+is required.
 
 ## Deploy
 
-Run the GitHub Actions workflow **Deploy Media to Raspberry Pi** manually. It
-uses the existing Infisical OIDC paths `/global`, `/nextcloud`, and
-`/bitwarden`, discovers the local Tailscale IPv4 address, then runs Ansible
-against the local Raspberry Pi inventory.
+Run **Deploy Media to Raspberry Pi** manually. The action retrieves secrets
+from the existing Infisical OIDC paths, renders the Raspberry environment, and
+runs the local Ansible inventory. Ansible starts the containers and reconciles
+the Tailscale Serve endpoints.
 
-The private names are:
+The workflow validates storage before retrieving secrets or changing the
+runtime. Choose a storage policy when starting it:
 
-```text
-immich.home.carlosjg
-couchdb.home.carlosjg
-cloud.home.carlosjg
-vault.home.carlosjg
+- `require-external` (default) stops unless `/srv` is backed by a filesystem
+  different from `/`; use this for the current Raspberry and other hosts with
+  real data on an SSD.
+- `prefer-external` uses an existing SSD mount but permits `/srv` on the system
+  disk; use this for a new host that may not have external storage yet.
+- `system-disk` explicitly accepts the filesystem currently backing `/srv`.
+
+`minimum_free_gb` defaults to `20`. The check validates that `/srv` exists, is
+writable by root, meets the free-space threshold, and reports the selected
+device in the GitHub Actions summary. It never discovers, formats, mounts, or
+unmounts disks automatically.
+
+Before choosing `require-external`, mount the intended SSD at `/srv` directly
+or through a bind mount whose backing filesystem differs from `/`. Confirm it
+with:
+
+```bash
+findmnt -T /
+findmnt -T /srv
 ```
+
+Current endpoints:
+
+| Service | Tailnet URL | Local upstream |
+| --- | --- | --- |
+| CouchDB | `https://raspberry-media-server.tail116b62.ts.net:8443` | `127.0.0.1:5984` |
+| Immich | `https://raspberry-media-server.tail116b62.ts.net:8444` | `127.0.0.1:2283` |
+| Nextcloud | `https://raspberry-media-server.tail116b62.ts.net:8445` | `127.0.0.1:8081` |
+| Bitwarden | `https://raspberry-media-server.tail116b62.ts.net:8446` | `127.0.0.1:8082` |
 
 ## Validate
 
-On a Tailscale client:
-
 ```bash
-dig @<raspberry-tailscale-ip> immich.home.carlosjg
-curl --cacert private-ca-root.pem https://immich.home.carlosjg/healthz
-```
-
-On the Raspberry Pi:
-
-```bash
-sudo dnsmasq --test
+sudo tailscale serve status
 docker compose --env-file /srv/secrets/runtime/media.env \
   -f /srv/apps/media/compose.yml \
   -f /srv/apps/media/compose.raspberry.yml ps
+curl -fsS https://raspberry-media-server.tail116b62.ts.net:8444/api/server/ping
 ```
 
-## Recovery and Rollback
+Application data remains in `/srv/data/media`; redeploying the configuration
+does not replace the Immich library, Nextcloud files, CouchDB databases, or
+Bitwarden data.
 
-If Split DNS is misconfigured, remove the `home.carlosjg` Split DNS rule
-in Tailscale; this changes name resolution only. To stop the private stack,
-run `docker compose down` with the two Raspberry Compose files. The public
-deployment and its workflow are independent and remain unchanged.
+## Recovery
+
+If an endpoint is missing, rerun the Raspberry action or apply the matching
+`tailscale serve --bg --https=<port> http://127.0.0.1:<port>` command. Before
+removing an endpoint with `tailscale serve`, check `tailscale serve status` so
+other services remain published.

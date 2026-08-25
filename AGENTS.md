@@ -42,8 +42,8 @@ docs/
 - `media` is the main stack.
 - Immich is the primary system.
 - CouchDB is colocated here because it is personal-data infrastructure, not app core.
-- NGINX is the public edge for Immich and CouchDB.
-- Tailscale is intentionally not used in this repo.
+- NGINX is the edge for the public Ubuntu deployment.
+- The Raspberry deployment publishes localhost-only service ports through Tailscale Serve.
 - Observability remains outside this repo unless explicitly added later.
 
 ## Validation
