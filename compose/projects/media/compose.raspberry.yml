@@ -11,6 +11,8 @@ services:
       - ${DB_DATA_LOCATION:-/srv/data/media/immich/postgres}:/var/lib/postgresql/data
 
   couchdb:
+    ports:
+      - "127.0.0.1:${COUCHDB_HTTP_PORT:-5984}:5984"
     volumes:
       - ${COUCHDB_DATA_LOCATION:-/srv/data/media/couchdb/data}:/opt/couchdb/data
       - ${MEDIA_APP_ROOT:-/srv/apps/media}/couchdb/local.d/local.ini:/opt/couchdb/etc/local.d/local.ini:ro
@@ -20,6 +22,8 @@ services:
       - ${NEXTCLOUD_DB_DATA_LOCATION:-/srv/data/media/nextcloud/mariadb}:/var/lib/mysql
 
   nextcloud:
+    ports:
+      - "127.0.0.1:${NEXTCLOUD_HTTP_PORT:-8081}:80"
     environment:
       APACHE_DISABLE_REWRITE_IP: "1"
       TRUSTED_PROXIES: ${NEXTCLOUD_TRUSTED_PROXIES:-172.30.0.0/24}
@@ -37,16 +41,13 @@ services:
       - ${BITWARDEN_DB_DATA_LOCATION:-/srv/data/media/bitwarden/mariadb}:/var/lib/mysql
 
   bitwarden:
+    ports:
+      - "127.0.0.1:${BITWARDEN_HTTP_PORT:-8082}:8080"
+    environment:
+      BW_DOMAIN: ${BITWARDEN_DOMAIN:-raspberry-media-server.tail116b62.ts.net:8446}
     volumes:
       - ${BITWARDEN_DATA_LOCATION:-/srv/data/media/bitwarden/data}:/etc/bitwarden
 
   nginx:
-    ports:
-      - "${TAILSCALE_BIND_IP:?Set TAILSCALE_BIND_IP to tailscale ip -4}:443:443"
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-check-certificate -qO- https://127.0.0.1/healthz >/dev/null"]
-    volumes:
-      - ${MEDIA_APP_ROOT:-/srv/apps/media}/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ${MEDIA_APP_ROOT:-/srv/apps/media}/nginx/conf.d:/etc/nginx/conf.d:ro
-      - ${PRIVATE_TLS_CERT_PATH:-/srv/secrets/tls/home.carlosjg/fullchain.pem}:/etc/nginx/private-tls/fullchain.pem:ro
-      - ${PRIVATE_TLS_KEY_PATH:-/srv/secrets/tls/home.carlosjg/privkey.pem}:/etc/nginx/private-tls/privkey.pem:ro
+    profiles:
+      - legacy-private-edge

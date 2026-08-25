@@ -28,6 +28,22 @@
     cache_valid_time: 3600
   when: (media_access_mode | default('public')) == 'public'
 
+- name: Verify Tailscale is connected for Raspberry media
+  ansible.builtin.command: tailscale status --json
+  register: deploy_media_tailscale_status
+  changed_when: false
+  when: (media_access_mode | default('public')) == 'tailscale_serve'
+
+- name: Assert Raspberry Tailscale Serve configuration is complete
+  ansible.builtin.assert:
+    that:
+      - media_tailscale_hostname | default('') | length > 0
+      - media_tailscale_endpoints | default([]) | length > 0
+    fail_msg: >-
+      Raspberry deployments require media_tailscale_hostname and at least one
+      media_tailscale_endpoints entry.
+  when: (media_access_mode | default('public')) == 'tailscale_serve'
+
 - name: Discover Raspberry Pi Tailscale IPv4 address
   ansible.builtin.command: tailscale ip -4
   register: deploy_media_tailscale_ip
@@ -283,6 +299,40 @@
     'Started' in deploy_media_up.stdout or
     'Recreated' in deploy_media_up.stdout or
     'Creating' in deploy_media_up.stdout
+
+- name: Remove the retired Raspberry NGINX edge container
+  ansible.builtin.command: docker container rm --force media_nginx
+  register: deploy_media_legacy_nginx_remove
+  changed_when: deploy_media_legacy_nginx_remove.rc == 0
+  failed_when: >-
+    deploy_media_legacy_nginx_remove.rc != 0 and
+    'No such container' not in deploy_media_legacy_nginx_remove.stderr
+  when: (media_access_mode | default('public')) == 'tailscale_serve'
+
+- name: Configure Raspberry HTTPS endpoints with Tailscale Serve
+  ansible.builtin.command:
+    cmd: "tailscale serve --yes --bg --https={{ item.https_port }} {{ item.upstream }}"
+  loop: "{{ media_tailscale_endpoints | default([]) }}"
+  register: deploy_media_tailscale_serve
+  changed_when: >-
+    'Available within your tailnet' in deploy_media_tailscale_serve.stdout or
+    'Serving' in deploy_media_tailscale_serve.stdout
+  when: (media_access_mode | default('public')) == 'tailscale_serve'
+
+- name: Read active Raspberry Tailscale Serve configuration
+  ansible.builtin.command: tailscale serve status
+  register: deploy_media_tailscale_serve_status
+  changed_when: false
+  when: (media_access_mode | default('public')) == 'tailscale_serve'
+
+- name: Verify every Raspberry service is published by Tailscale Serve
+  ansible.builtin.assert:
+    that:
+      - "('https://' ~ media_tailscale_hostname ~ ':' ~ (item.https_port | string)) in deploy_media_tailscale_serve_status.stdout"
+      - "item.upstream in deploy_media_tailscale_serve_status.stdout"
+    fail_msg: "Tailscale Serve endpoint {{ item.name }} was not configured as expected."
+  loop: "{{ media_tailscale_endpoints | default([]) }}"
+  when: (media_access_mode | default('public')) == 'tailscale_serve'
 
 - name: Obtain or renew media TLS certificate
   ansible.builtin.command:

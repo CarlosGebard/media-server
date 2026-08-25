@@ -13,21 +13,17 @@ private hostnames for media services from both LAN and remote networks.
 ## Decision
 
 Deploy the media runtime to the Raspberry Pi with a dedicated Compose overlay.
-Tailscale provides transport and access control. Host-level dnsmasq resolves
-`*.home.carlosjg` to the Raspberry Pi Tailscale IPv4 address, and the
-tailnet uses Split DNS for that suffix. NGINX binds only to that Tailscale
-address and routes each hostname to its Docker service.
+Each application binds only to a localhost port and Tailscale Serve publishes
+it on an HTTPS port of the Raspberry Pi MagicDNS hostname. Tailscale manages
+transport, access control, DNS, and trusted TLS certificates.
 
-TLS uses a private CA certificate mounted from `/srv/secrets/tls`; clients must
-trust its root certificate. The self-hosted Infisical runtime is removed, while
+The self-hosted Infisical runtime is removed, while
 GitHub Actions continues to retrieve deploy secrets from an external Infisical
 instance using OIDC. The existing public-server deployment remains separate.
 
 ## Consequences
 
 - No router, NAT, public DNS, public ACME, or exposed ports are required.
-- Private clients must be enrolled in Tailscale and trust the private CA.
-- Split DNS and tailnet ACLs are external configuration and are documented as
-  bootstrap requirements.
-- dnsmasq is a small host dependency managed by Ansible rather than a Docker
-  workload, so DNS is available independently of the media stack.
+- Private clients must be enrolled in the tailnet and allowed by its ACLs.
+- No private CA, split DNS, dnsmasq, or Raspberry NGINX edge is required.
+- The service URLs use distinct HTTPS ports on one stable MagicDNS hostname.

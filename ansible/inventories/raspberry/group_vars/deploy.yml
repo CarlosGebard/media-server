@@ -2,14 +2,14 @@
 shared_docker_networks:
   - infra_shared_backend
 
-media_access_mode: private
-media_private_domain: home.carlosjg
-media_private_immich_domain: immich.home.carlosjg
-media_private_couchdb_domain: couchdb.home.carlosjg
-media_private_nextcloud_domain: cloud.home.carlosjg
-media_private_bitwarden_domain: vault.home.carlosjg
-media_private_tls_certificate_path: "{{ srv_secrets_root }}/tls/home.carlosjg/fullchain.pem"
-media_private_tls_key_path: "{{ srv_secrets_root }}/tls/home.carlosjg/privkey.pem"
+media_platform: raspberry_tailscale
+media_access_mode: tailscale_serve
+media_tailscale_hostname: raspberry-media-server.tail116b62.ts.net
+media_tailscale_endpoints:
+  - { name: couchdb, https_port: 8443, upstream: "http://127.0.0.1:5984" }
+  - { name: immich, https_port: 8444, upstream: "http://127.0.0.1:2283" }
+  - { name: nextcloud, https_port: 8445, upstream: "http://127.0.0.1:8081" }
+  - { name: bitwarden, https_port: 8446, upstream: "http://127.0.0.1:8082" }
 
 deploy:
   media:
@@ -36,10 +36,8 @@ deploy:
       - nextcloud-cron
       - bitwarden-db
       - bitwarden
-      - nginx
     directories:
       - { path: "{{ srv_apps_root }}/media/couchdb/local.d", mode: "0755" }
-      - { path: "{{ srv_apps_root }}/media/nginx/conf.d", mode: "0755" }
       - { path: "{{ srv_data_root }}/media/immich/app", mode: "0750" }
       - { path: "{{ srv_data_root }}/media/immich/postgres", owner: "999", group: "999", mode: "0750", recurse: true }
       - { path: "{{ srv_data_root }}/media/couchdb/data", owner: "5984", group: "5984", mode: "0750", recurse: true }
@@ -48,7 +46,6 @@ deploy:
       - { path: "{{ srv_data_root }}/media/bitwarden/data", mode: "0750" }
       - { path: "{{ srv_data_root }}/media/bitwarden/mariadb", owner: "999", group: "999", mode: "0750", recurse: true }
       - { path: "{{ srv_secrets_root }}/runtime", mode: "0750" }
-      - { path: "{{ srv_secrets_root }}/tls/home.carlosjg", mode: "0700" }
     staged_secret_files:
       - source_file: "{{ lookup('ansible.builtin.env', 'MEDIA_RUNTIME_ENV_SOURCE_FILE') | default('', true) }}"
         dest: "{{ srv_secrets_root }}/runtime/media.env"
@@ -64,17 +61,10 @@ deploy:
           - nextcloud-cron
           - bitwarden-db
           - bitwarden
-          - nginx
     required_files:
       - "{{ srv_secrets_root }}/runtime/media.env"
-      - "{{ media_private_tls_certificate_path }}"
-      - "{{ media_private_tls_key_path }}"
     config_files:
       - src: "{{ playbook_dir }}/../../compose/configs/couchdb/local.d/local.ini"
         dest: "{{ srv_apps_root }}/media/couchdb/local.d/local.ini"
         restart_services:
           - couchdb
-      - src: "{{ playbook_dir }}/../../compose/configs/nginx/nginx.conf"
-        dest: "{{ srv_apps_root }}/media/nginx/nginx.conf"
-        restart_services:
-          - nginx
