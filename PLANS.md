@@ -200,6 +200,12 @@ checks, and inspect `tailscale serve status` after a Raspberry deployment.
 The Ubuntu action continues to use `compose.prod.yml`, public NGINX, Certbot,
 and the production inventory; those files are outside this follow-up's scope.
 
+Storage safety: the Raspberry workflow checks the filesystem backing `/srv`
+before retrieving secrets or deploying. Its default `require-external` policy
+protects the current SSD-backed installation from silently falling back to the
+system disk. New hosts may explicitly select `prefer-external` or `system-disk`.
+The workflow validates capacity but never formats or mounts a disk.
+
 ## Ready-to-implement Summary
 
 Minimum safe path: scaffold `personal-media`, render Compose locally, validate NGINX, then add production deploy role without touching live CouchDB. Actual CouchDB data migration must be separate controlled step with backup, downtime window, and post-migration `_up` check through NGINX.

@@ -26,6 +26,30 @@ from the existing Infisical OIDC paths, renders the Raspberry environment, and
 runs the local Ansible inventory. Ansible starts the containers and reconciles
 the Tailscale Serve endpoints.
 
+The workflow validates storage before retrieving secrets or changing the
+runtime. Choose a storage policy when starting it:
+
+- `require-external` (default) stops unless `/srv` is backed by a filesystem
+  different from `/`; use this for the current Raspberry and other hosts with
+  real data on an SSD.
+- `prefer-external` uses an existing SSD mount but permits `/srv` on the system
+  disk; use this for a new host that may not have external storage yet.
+- `system-disk` explicitly accepts the filesystem currently backing `/srv`.
+
+`minimum_free_gb` defaults to `20`. The check validates that `/srv` exists, is
+writable by root, meets the free-space threshold, and reports the selected
+device in the GitHub Actions summary. It never discovers, formats, mounts, or
+unmounts disks automatically.
+
+Before choosing `require-external`, mount the intended SSD at `/srv` directly
+or through a bind mount whose backing filesystem differs from `/`. Confirm it
+with:
+
+```bash
+findmnt -T /
+findmnt -T /srv
+```
+
 Current endpoints:
 
 | Service | Tailnet URL | Local upstream |

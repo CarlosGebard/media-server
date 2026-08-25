@@ -7,6 +7,19 @@ on:
         description: Git ref to deploy
         required: true
         default: main
+      storage_policy:
+        description: Storage required behind /srv
+        required: true
+        type: choice
+        default: require-external
+        options:
+          - require-external
+          - prefer-external
+          - system-disk
+      minimum_free_gb:
+        description: Minimum free space required on /srv in GiB
+        required: true
+        default: "20"
 
 concurrency:
   group: personal-media-raspberry-deploy
@@ -34,6 +47,72 @@ jobs:
         uses: actions/checkout@v5
         with:
           ref: ${{ env.DEPLOY_GIT_REF }}
+
+      - name: Validate Raspberry storage
+        env:
+          STORAGE_POLICY: ${{ inputs.storage_policy }}
+          MINIMUM_FREE_GB: ${{ inputs.minimum_free_gb }}
+        run: |
+          set -euo pipefail
+          case "$STORAGE_POLICY" in
+            require-external|prefer-external|system-disk) ;;
+            *) echo "Unsupported storage policy: $STORAGE_POLICY" >&2; exit 1 ;;
+          esac
+          if [[ ! "$MINIMUM_FREE_GB" =~ ^[0-9]+$ ]]; then
+            echo 'minimum_free_gb must be a non-negative integer.' >&2
+            exit 1
+          fi
+          for command in df findmnt sudo; do
+            command -v "$command" >/dev/null 2>&1 || {
+              echo "Missing required storage command: $command" >&2
+              exit 1
+            }
+          done
+          sudo -n true || {
+            echo 'The runner requires passwordless sudo for storage validation.' >&2
+            exit 1
+          }
+          sudo -n install -d -m 0755 /srv
+          sudo -n test -w /srv || {
+            echo '/srv is not writable by root.' >&2
+            exit 1
+          }
+
+          root_device="$(findmnt -n -o MAJ:MIN -T /)"
+          srv_device="$(findmnt -n -o MAJ:MIN -T /srv)"
+          srv_source="$(findmnt -n -o SOURCE -T /srv)"
+          srv_filesystem="$(findmnt -n -o FSTYPE -T /srv)"
+          free_gb="$(df -Pk /srv | awk 'NR == 2 { print int($4 / 1024 / 1024) }')"
+
+          storage_kind=system
+          if [[ "$srv_device" != "$root_device" ]]; then
+            storage_kind=external
+          fi
+
+          if [[ "$STORAGE_POLICY" == require-external && "$storage_kind" != external ]]; then
+            echo "Deployment stopped: /srv uses the system filesystem ($srv_source)." >&2
+            echo 'Mount the external SSD at /srv or select a different storage policy.' >&2
+            exit 1
+          fi
+          if (( free_gb < MINIMUM_FREE_GB )); then
+            echo "Deployment stopped: /srv has ${free_gb} GiB free; ${MINIMUM_FREE_GB} GiB required." >&2
+            exit 1
+          fi
+          if [[ "$STORAGE_POLICY" == prefer-external && "$storage_kind" == system ]]; then
+            echo 'Warning: no separate filesystem is mounted behind /srv; using the system disk.' >&2
+          fi
+
+          printf 'Storage OK: kind=%s source=%s filesystem=%s free=%sGiB policy=%s\n' \
+            "$storage_kind" "$srv_source" "$srv_filesystem" "$free_gb" "$STORAGE_POLICY"
+          {
+            echo '### Raspberry storage'
+            echo
+            echo "- Policy: \`$STORAGE_POLICY\`"
+            echo "- Storage: \`$storage_kind\`"
+            echo "- Source: \`$srv_source\`"
+            echo "- Filesystem: \`$srv_filesystem\`"
+            echo "- Free space: \`${free_gb} GiB\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Pull global deployment secrets from Infisical via OIDC
         uses: Infisical/secrets-action@v1.0.10
